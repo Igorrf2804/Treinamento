@@ -1,11 +1,12 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, UsuarioSerializer, ScriptSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, RelatorioSerializer
+from .serializers import PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, RelatorioSerializer, ScriptsSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta
+from .models import Pergunta, Script
 import google.generativeai as genai
-import requests
+from .serializers import ScriptsSerializer
+from rest_framework.decorators import api_view
 # Create your views here.
 
 GOOGLE_API_KEY = "AIzaSyCLOvpQv7soejToFewHRrAWRaUkUVYQu3g"
@@ -42,9 +43,62 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     #queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
-class ScriptViewSet(viewsets.ModelViewSet):
-    #queryset = Script.objects.all()
-    serializer_class = ScriptSerializer
+
+@api_view(['GET'])
+def listar_scripts(request):
+
+    # http://127.0.0.1:8000/api/scripts
+
+    if request.method == 'GET':
+
+        scripts = Script.objects.all()                          # Get all objects in User's database (It returns a queryset)
+
+        serializer = ScriptsSerializer(scripts, many=True)       # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)                    # Return the serialized data
+    
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_script(request):
+
+    # http://127.0.0.1:8000/api/cadastrar-script
+
+    # {
+    #     "nome": "oi",
+    #     "descricao": "oi"
+    # }
+
+    if request.method == 'POST':
+        serializer = ScriptsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['PUT'])
+def editar_script(request, id):
+
+    # http://127.0.0.1:8000/api/editar-script/1
+
+    print("id", id)
+    print("request", request.data)
+
+    try:
+        id = Script.objects.get(id=id)
+    except Script.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = ScriptsSerializer(id, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class PessoaViewSet(viewsets.ModelViewSet):
     #queryset = Pessoa.objects.all()
