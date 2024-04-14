@@ -1,0 +1,9 @@
+django
+djangorestframework
+PyYAML 
+uritemplate
+Markdown
+Pygments
+django-filter
+django-guardian
+google-generativeai
