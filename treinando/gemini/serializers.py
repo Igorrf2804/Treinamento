@@ -11,10 +11,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['usuario', 'senha']
 
-class ScriptSerializer(serializers.ModelSerializer):
+class ScriptsSerializer(serializers.ModelSerializer):
+    # gerar json dos modelos
     class Meta:
         model = Script
-        fields = ['nome', 'descricao']
+        fields = '__all__'
 
 class PessoaSerializer(serializers.ModelSerializer):
     class Meta:
