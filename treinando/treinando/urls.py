@@ -25,5 +25,6 @@ router.register(r'perguntas', PerguntaViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path('login/', UsuarioViewSet.as_view({'post' : 'login'}))
+    path('login/', UsuarioViewSet.as_view({'post' : 'login'})),
+    path('recuperarSenha/', UsuarioViewSet.as_view({'post' : 'recuperar_senha'}))
 ]

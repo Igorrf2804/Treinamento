@@ -9,6 +9,7 @@ from .models import Pergunta, Script, Usuario, Pessoa, Setor, Indicador, Relator
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
+import random
 # Create your views here.
 
 GOOGLE_API_KEY = "AIzaSyCLOvpQv7soejToFewHRrAWRaUkUVYQu3g"
@@ -54,10 +55,16 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response({'resultado' : True}, status= status.HTTP_200_OK)
         else:
             return Response({'resultado' : False}, status= status.HTTP_404_NOT_FOUND)
-
-
     
-
+    @action(detail=False, methods=['post'])
+    def recuperar_senha(self, request):
+        lista = []
+        for i in range(0,8):
+            lista.append(random.randint(0, 9))
+        print(lista)
+        return Response({'resposta' : 'Foi'}, status= status.HTTP_200_OK)
+    
+    
 
 @api_view(['GET'])
 def listar_scripts(request):
