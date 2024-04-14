@@ -58,7 +58,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     
 
-
 @api_view(['GET'])
 def listar_scripts(request):
 
@@ -112,6 +111,86 @@ def editar_script(request, id):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def listar_pessoas(request):
+
+        # http://127.0.0.1:8000/api/scripts
+
+    if request.method == 'GET':
+
+        scripts = Pessoa.objects.all()                          # Get all objects in User's database (It returns a queryset)
+
+        serializer = PessoaSerializer(scripts, many=True)       # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)                    # Return the serialized data
+        
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_pessoa(request):
+
+        # http://127.0.0.1:8000/api/cadastrar-script
+
+        # {
+        #     "nome": "oi",
+        #     "descricao": "oi"
+        # }
+
+    if request.method == 'POST':
+        serializer = PessoaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+def listar_indicadores(request):
+
+        # http://127.0.0.1:8000/api/scripts
+
+    if request.method == 'GET':
+
+        scripts = Indicador.objects.all()                          # Get all objects in User's database (It returns a queryset)
+
+        serializer = IndicadorSerializer(scripts, many=True)       # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)                    # Return the serialized data
+        
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_indicador(request):
+
+        # http://127.0.0.1:8000/api/cadastrar-script
+
+        # {
+        #     "nome": "oi",
+        #     "descricao": "oi"
+        # }
+
+    if request.method == 'POST':
+        serializer = IndicadorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+
+
+
+
+
 
 
 class PessoaViewSet(viewsets.ModelViewSet):

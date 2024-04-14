@@ -25,5 +25,6 @@ router.register(r'perguntas', PerguntaViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
-    path('login/', UsuarioViewSet.as_view({'post' : 'login'}))
+    path('login/', UsuarioViewSet.as_view({'post' : 'login'})),
+    path('api/', include('gemini.urls'), name='gemini_urls')
 ]
