@@ -17,13 +17,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
+<<<<<<< HEAD
 from gemini.views import PerguntaViewSet, UsuarioViewSet, PessoaViewSet, SetorViewSet, IndicadorViewSet, RelatorioViewSet
+=======
+from gemini.views import PerguntaViewSet
+>>>>>>> 98a02d96d52c5b12dea3867bfc22c9435ea9af5c
 
 router = routers.DefaultRouter()
 router.register(r'perguntas', PerguntaViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+<<<<<<< HEAD
     path('', include(router.urls)),
     path('login/', UsuarioViewSet.as_view({'post' : 'login'}))
+=======
+    path('', include(router.urls))
+>>>>>>> 98a02d96d52c5b12dea3867bfc22c9435ea9af5c
 ]
