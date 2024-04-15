@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from gemini.views import PerguntaViewSet, UsuarioViewSet, PessoaViewSet, SetorViewSet, IndicadorViewSet, RelatorioViewSet
+from gemini.views import TelaInicialViewSet, PerguntaViewSet, UsuarioViewSet, PessoaViewSet, SetorViewSet, IndicadorViewSet, RelatorioViewSet
 
 router = routers.DefaultRouter()
 router.register(r'perguntas', PerguntaViewSet)
@@ -25,6 +25,17 @@ router.register(r'perguntas', PerguntaViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include(router.urls)),
+
     path('login/', UsuarioViewSet.as_view({'post' : 'login'})),
-    path('recuperarSenha/', UsuarioViewSet.as_view({'post' : 'recuperar_senha'}))
+    path('recuperarSenha/', UsuarioViewSet.as_view({'post' : 'recuperar_senha'})),
+
+    path('api/', include('gemini.urls'), name='gemini_urls'),
+    path('inicio/', TelaInicialViewSet.as_view({'get' : 'listarDados'})),
+
+    path('visualizarSetores/', SetorViewSet.as_view({'get' : 'visualizarSetores'})),
+    path('cadastrarSetores/', SetorViewSet.as_view({'post' : 'cadastrarSetores'})),
+    path('editarSetores/', SetorViewSet.as_view({'put' : 'editarSetores'})),
+    path('excluirSetores/', SetorViewSet.as_view({'delete' : 'excluirSetores'})),
+    
+    path('relatorio/', RelatorioViewSet.as_view({'post' : 'enviarRelatorio'}))
 ]

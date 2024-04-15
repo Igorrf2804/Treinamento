@@ -23,9 +23,11 @@ class PessoaSerializer(serializers.ModelSerializer):
         fields = ['nome', 'email']
 
 class SetorSerializer(serializers.ModelSerializer):
+    pessoas = serializers.PrimaryKeyRelatedField(queryset = Pessoa.objects.all(), many=True)
     class Meta:
         model = Setor
         fields = ['nome', 'pessoas']
+        depth = 1 
 
 class IndicadorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -36,3 +38,6 @@ class RelatorioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Relatorio
         fields = ['data_inicial', 'data_final', 'indicadores']
+        depth = 1
+    
+    

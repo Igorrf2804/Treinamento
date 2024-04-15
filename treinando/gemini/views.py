@@ -3,7 +3,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, RelatorioSerializer, ScriptsSerializer
+from .serializers import  PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, RelatorioSerializer, ScriptsSerializer
 from django.views.decorators.csrf import csrf_exempt
 from .models import Pergunta, Script, Usuario, Pessoa, Setor, Indicador, Relatorio
 import google.generativeai as genai
@@ -43,7 +43,7 @@ class PerguntaViewSet(viewsets.ModelViewSet):
         return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
 
 
-class UsuarioViewSet(viewsets.ModelViewSet):
+class UsuarioViewSet(viewsets.ViewSet):
     #queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
@@ -121,13 +121,125 @@ def editar_script(request, id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def listar_pessoas(request):
+
+        # http://127.0.0.1:8000/api/scripts
+
+    if request.method == 'GET':
+
+        scripts = Pessoa.objects.all()                          # Get all objects in User's database (It returns a queryset)
+
+        serializer = PessoaSerializer(scripts, many=True)       # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)                    # Return the serialized data
+        
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_pessoa(request):
+
+        # http://127.0.0.1:8000/api/cadastrar-script
+
+        # {
+        #     "nome": "oi",
+        #     "descricao": "oi"
+        # }
+
+    if request.method == 'POST':
+        serializer = PessoaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+def listar_indicadores(request):
+
+        # http://127.0.0.1:8000/api/scripts
+
+    if request.method == 'GET':
+
+        scripts = Indicador.objects.all()                          # Get all objects in User's database (It returns a queryset)
+
+        serializer = IndicadorSerializer(scripts, many=True)       # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)                    # Return the serialized data
+        
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_indicador(request):
+
+        # http://127.0.0.1:8000/api/cadastrar-script
+
+        # {
+        #     "nome": "oi",
+        #     "descricao": "oi"
+        # }
+
+    if request.method == 'POST':
+        serializer = IndicadorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class PessoaViewSet(viewsets.ModelViewSet):
     #queryset = Pessoa.objects.all()
     serializer_class = PessoaSerializer
 
-class SetorViewSet(viewsets.ModelViewSet):
+class SetorViewSet(viewsets.ViewSet):
     #queryset = Setor.objects.all()
     serializer_class = SetorSerializer
+
+    @action(detail=False, methods=['get'])
+    def visualizarSetores(self, request):
+        serializer = SetorSerializer(Setor.objects.all(), many=True)
+        return Response(serializer.data, status= status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'])
+    def cadastrarSetores(self, request):
+
+        serializer = SetorSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status = status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['put'])
+    def editarSetores(self, request):
+        
+        try:
+            setor = Setor.objects.get(id = request.data['id'])
+        except Setor.DoesNotExist:
+            return Response()
+    
+        serializer = SetorSerializer(setor, request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['delete'])
+    def excluirSetores(self, request):
+
+        try:
+            setor = Setor.objects.get(id = request.data['id'])
+            setor.delete()
+            return Response({'resultado' : 'usuario deletado com sucesso!'}, status= status.HTTP_202_ACCEPTED)
+        except:
+            return Response({'resultado' : 'falha ao deletar usuario!'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class IndicadorViewSet(viewsets.ModelViewSet):
     #queryset = Indicador.objects.all()
@@ -136,3 +248,30 @@ class IndicadorViewSet(viewsets.ModelViewSet):
 class RelatorioViewSet(viewsets.ModelViewSet):
     #queryset = Relatorio.objects.all()
     serializer_class = RelatorioSerializer
+
+    @action(detail=False, methods=['post'])
+    def enviarRelatorio(self, request):
+        data = request.data
+        serializer = RelatorioSerializer(data)
+
+class TelaInicialViewSet(viewsets.ViewSet):
+    queryset = {
+        'informacoes' : [],
+        'setores' : [],
+        'pessoas' : []
+    }
+
+    @action(detail=False, methods=['get'])
+    def listarDados(self, request):
+        setores = Setor.objects.all()
+        pessoas = Pessoa.objects.all()
+        serializerSetores = SetorSerializer(setores, many = True)
+        serializerPessoas = PessoaSerializer(pessoas, many = True)
+
+        for index in serializerSetores.data:
+            self.queryset['setores'].append(index)
+        for index in serializerPessoas.data:
+            self.queryset['pessoas'].append(index)
+
+        
+        return Response({'data': self.queryset}, status= status.HTTP_200_OK)
