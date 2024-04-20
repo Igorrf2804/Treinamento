@@ -1,10 +1,9 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, \
-    RelatorioSerializer, ScriptsSerializer
+from .serializers import PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Usuario, Pessoa, Setor, Indicador, Relatorio
+from .models import Pergunta, Script, Usuario, Pessoa, Setor, Indicador
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
@@ -259,111 +258,34 @@ def excluir_setores(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@api_view(['GET'])
+def listar_pessoas_por_ids(request):
+    if request.method == 'GET':
+        ids_list = request.GET.getlist('ids[]', [])  # Get the list of IDs from the query parameters
+        pessoas = Pessoa.objects.filter(id__in=ids_list)
+        serializer = PessoaSerializer(pessoas, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
+def listar_pessoas_por_nome(request):
+    if request.method == 'GET':
+        nome_filtro = request.GET.get('nome', '')  # Obtém o parâmetro 'nome' da query string
+        pessoas = Pessoa.objects.filter(nome__icontains=nome_filtro)  # Filtra as pessoas com base no nome fornecido
+        serializer = PessoaSerializer(pessoas, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class PessoaViewSet(viewsets.ModelViewSet):
-    # queryset = Pessoa.objects.all()
-    serializer_class = PessoaSerializer
-
-
-class SetorViewSet(viewsets.ViewSet):
-    # queryset = Setor.objects.all()
-    serializer_class = SetorSerializer
-
-    @api_view(['GET'])
-    def visualizarSetores(self, request):
-        serializer = SetorSerializer(Setor.objects.all(), many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=['post'])
-    def cadastrarSetores(self, request):
-
-        serializer = SetorSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['put'])
-    def editarSetores(self, request):
-
-        try:
-            setor = Setor.objects.get(id=request.data['id'])
-        except Setor.DoesNotExist:
-            return Response()
-
-        serializer = SetorSerializer(setor, request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['delete'])
-    def excluirSetores(self, request):
-
-        try:
-            setor = Setor.objects.get(id=request.data['id'])
-            setor.delete()
-            return Response({'resultado': 'usuario deletado com sucesso!'}, status=status.HTTP_202_ACCEPTED)
-        except:
-            return Response({'resultado': 'falha ao deletar usuario!'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class IndicadorViewSet(viewsets.ModelViewSet):
-    # queryset = Indicador.objects.all()
-    serializer_class = IndicadorSerializer
-
-
-class RelatorioViewSet(viewsets.ModelViewSet):
-    # queryset = Relatorio.objects.all()
-    serializer_class = RelatorioSerializer
-
-    @action(detail=False, methods=['post'])
-    def enviarRelatorio(self, request):
-        data = request.data
-        serializer = RelatorioSerializer(data)
-
-
-class TelaInicialViewSet(viewsets.ViewSet):
-    queryset = {
-        'informacoes': [],
-        'setores': [],
-        'pessoas': []
-    }
-
-    @action(detail=False, methods=['get'])
-    def listarDados(self, request):
-        setores = Setor.objects.all()
-        pessoas = Pessoa.objects.all()
-        serializerSetores = SetorSerializer(setores, many=True)
-        serializerPessoas = PessoaSerializer(pessoas, many=True)
-
-        for index in serializerSetores.data:
-            self.queryset['setores'].append(index)
-        for index in serializerPessoas.data:
-            self.queryset['pessoas'].append(index)
-
-        return Response({'data': self.queryset}, status=status.HTTP_200_OK)
+@api_view(['GET'])
+def listar_indicadores_por_nome(request):
+    if request.method == 'GET':
+        nome_filtro = request.GET.get('nome', '')
+        indicadores = Indicador.objects.filter(nome__icontains=nome_filtro)
+        serializer = IndicadorSerializer(indicadores, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['PUT'])
@@ -422,6 +344,12 @@ def excluir_indicador(request, id):
     if request.method == 'DELETE':
         id.delete();
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+# @api_view(['GET'])
+# def listar_informacoes_inicio(request):
+
+    # fazer depois com que essa rota retorne o número de conversas
+    # e número de conversas sobre determinado assunto
 
 
 
