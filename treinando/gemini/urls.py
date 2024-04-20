@@ -23,13 +23,24 @@ urlpatterns = [
     path('excluir-indicador/<int:id>', views.excluir_indicador, name='excluir_indicador'),
     path('indicadores-por-nome', views.listar_indicadores_por_nome, name='listar_indicadores_por_nome'),
 
-
-    # path('inicio', views.listar_informacoes_inicio, name='listar_informacoes_inicio'),
-
     path('visualizar-setores/', views.visualizar_setores, name='visualizar-setores'),
     path('cadastrar-setores', views.cadastrar_setores, name='cadastrar-setores'),
     path('editar-setores/<int:id>', views.editar_setores, name='editar-setores'),
     path('excluir-setores/<int:id>', views.excluir_setores, name='excluir-setores'),
+
+
+    path('redefinir-senha', views.redefinir_senha, name='redefinir_senha'),
+    path('alterar-senha', views.alterar_senha, name='alterar_senha'),
+
+
+
+
+
+
+
+
+    # path('inicio', views.listar_informacoes_inicio, name='listar_informacoes_inicio'),
+
 
     # path('relatorio', views.gerar_relatorio, name='gerar-relatorio')
 

@@ -1,3 +1,6 @@
+
+from django.contrib.auth.views import PasswordResetView, PasswordResetDoneView
+from django.core.mail import send_mail
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -59,18 +62,85 @@ class UsuarioViewSet(viewsets.ViewSet):
         else:
             return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['post'])
-    def recuperar_senha(self, request):
-        lista = []
-        for i in range(0, 8):
-            lista.append(random.randint(0, 9))
-        print(lista)
-        return Response({'resposta': 'Foi'}, status=status.HTTP_200_OK)
+
+    # @action(detail=False, methods=['post'])
+    # def redefinir_senha(self, request):
+    #     if request.method == 'POST':
+    #         email = request.POST.get('email')
+    #         usuario = User.objects.get(email=email)
+    #
+    #         codigo = gerar_codigo_verificacao()
+    #         enviar_codigo_por_email(email, codigo)
+    #
+    #         # Armazenar o código no banco de dados ou em algum lugar para verificar posteriormente
+    #         request.session['codigo_verificacao'] = codigo
+    #         request.session['usuario_id'] = usuario.id
+    #
+    #         return HttpResponse('Código de verificação enviado com sucesso!')
+    #     return render(request, 'redefinir_senha.html')
+
+
+
+
+#---------------------------------------------REDEFINIR SENHA--------------------------------------------#
+
+@api_view(['POST'])
+def redefinir_senha(request):
+    if request.method == 'POST':
+        email = request.data.get('email')
+        if (Usuario.objects.filter(email=email).exists()):
+            codigo = gerar_codigo_verificacao()
+            enviar_codigo_por_email(email, codigo)
+            return Response(codigo, status=status.HTTP_201_CREATED)
+        return Response("Usuário não encontrado", status=status.HTTP_400_BAD_REQUEST)
+    return Response("Não foi possível enviar o código de verificação", status=status.HTTP_400_BAD_REQUEST)
+
+def gerar_codigo_verificacao():
+    return str(random.randint(10000000, 99999999))
+
+def enviar_codigo_por_email(email, codigo):
+    assunto = 'Código de verificação para redefinição de senha'
+    mensagem = f'Seu código de verificação é: {codigo}'
+    remetente = "ads.senac.tcs@gmail.com"
+    send_mail(assunto, mensagem,remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+
+@api_view(['PUT'])
+def alterar_senha(request):
+    if request.method == 'PUT':
+        email = request.data.get('email')
+        senha = request.data.get('senha')  # Obtenha a senha dos dados da solicitação
+
+        try:
+            usuario = Usuario.objects.get(email=email)
+        except Usuario.DoesNotExist:
+            return Response("Usuário não encontrado", status=status.HTTP_404_NOT_FOUND)
+
+        dados = {'usuario': usuario.usuario, 'senha': senha}
+        serializer = UsuarioSerializer(usuario, data=dados)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response("Método de solicitação inválido", status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+    #
+    # if (usuario).exists():
+    #         serializer = UsuarioSerializer(data=usuario)
+    #         print(serializer)
+    #         if serializer.is_valid():
+    #             serializer.save()
+    #         return Response(serializer.data)
+    # return Response("Não foi possível enviar o código de verificação", status=status.HTTP_400_BAD_REQUEST)
+
+
+
+#-------------------------------------------------SCRIPTS------------------------------------------------#
 
 
 @api_view(['GET'])
 def listar_scripts(request):
-    # http://127.0.0.1:8000/api/scripts
 
     if request.method == 'GET':
         scripts = Script.objects.all()  # Get all objects in User's database (It returns a queryset)
@@ -85,13 +155,6 @@ def listar_scripts(request):
 
 @api_view(['POST'])
 def cadastrar_script(request):
-    # http://127.0.0.1:8000/api/cadastrar-script
-
-    # {
-    #     "nome": "oi",
-    #     "descricao": "oi"
-    # }
-
     if request.method == 'POST':
         serializer = ScriptsSerializer(data=request.data)
         if serializer.is_valid():
@@ -102,11 +165,6 @@ def cadastrar_script(request):
 
 @api_view(['PUT'])
 def editar_script(request, id):
-    # http://127.0.0.1:8000/api/editar-script/1
-
-    print("id", id)
-    print("request", request.data)
-
     try:
         id = Script.objects.get(id=id)
     except Script.DoesNotExist:
@@ -132,10 +190,13 @@ def excluir_script(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
+
+#-----------------------------------------------PESSOAS------------------------------------------------#
+
+
 @api_view(['GET'])
 def listar_pessoas(request):
-    # http://127.0.0.1:8000/api/scripts
-
     if request.method == 'GET':
         scripts = Pessoa.objects.all()  # Get all objects in User's database (It returns a queryset)
 
@@ -149,13 +210,6 @@ def listar_pessoas(request):
 
 @api_view(['POST'])
 def cadastrar_pessoa(request):
-    # http://127.0.0.1:8000/api/cadastrar-script
-
-    # {
-    #     "nome": "oi",
-    #     "descricao": "oi"
-    # }
-
     if request.method == 'POST':
         serializer = PessoaSerializer(data=request.data)
         if serializer.is_valid():
@@ -163,99 +217,6 @@ def cadastrar_pessoa(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-@api_view(['GET'])
-def listar_indicadores(request):
-    # http://127.0.0.1:8000/api/scripts
-
-    if request.method == 'GET':
-        scripts = Indicador.objects.all()  # Get all objects in User's database (It returns a queryset)
-
-        serializer = IndicadorSerializer(scripts,
-                                         many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
-
-        return Response(serializer.data)  # Return the serialized data
-
-    return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-def cadastrar_indicador(request):
-    # http://127.0.0.1:8000/api/cadastrar-script
-
-    # {
-    #     "nome": "oi",
-    #     "descricao": "oi"
-    # }
-
-    if request.method == 'POST':
-        serializer = IndicadorSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET'])
-def visualizar_setores(request):
-
-    if request.method == 'GET':
-        scripts = Setor.objects.all()  # Get all objects in User's database (It returns a queryset)
-
-        serializer = SetorSerializer(scripts, many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
-
-        return Response(serializer.data)  # Return the serialized data
-
-    return Response(status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['POST'])
-def cadastrar_setores(request):
-    # http://127.0.0.1:8000/api/cadastrar-script
-
-    # {
-    #     "nome": "oi",
-    #     "descricao": "oi"
-    # }
-
-    if request.method == 'POST':
-        serializer = SetorSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['PUT'])
-def editar_setores(request, id):
-    # http://127.0.0.1:8000/api/editar-script/1
-
-    print("id", id)
-    print("request", request.data)
-
-    try:
-        id = Setor.objects.get(id=id)
-    except Setor.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'PUT':
-        serializer = SetorSerializer(id, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-@api_view(['DELETE'])
-def excluir_setores(request, id):
-    try:
-        id = Setor.objects.get(id=id)
-    except Setor.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'DELETE':
-        id.delete();
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['GET'])
@@ -278,20 +239,8 @@ def listar_pessoas_por_nome(request):
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET'])
-def listar_indicadores_por_nome(request):
-    if request.method == 'GET':
-        nome_filtro = request.GET.get('nome', '')
-        indicadores = Indicador.objects.filter(nome__icontains=nome_filtro)
-        serializer = IndicadorSerializer(indicadores, many=True)
-        return Response(serializer.data)
-    return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
 @api_view(['PUT'])
 def editar_pessoa(request, id):
-    print(id)
-
     try:
         id = Pessoa.objects.get(id=id)
     except Pessoa.DoesNotExist:
@@ -317,10 +266,48 @@ def excluir_pessoa(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+#--------------------------------------------INDICADORES------------------------------------------------#
+
+
+
+@api_view(['GET'])
+def listar_indicadores(request):
+    if request.method == 'GET':
+        scripts = Indicador.objects.all()  # Get all objects in User's database (It returns a queryset)
+
+        serializer = IndicadorSerializer(scripts,
+                                         many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)  # Return the serialized data
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def cadastrar_indicador(request):
+    if request.method == 'POST':
+        serializer = IndicadorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+@api_view(['GET'])
+def listar_indicadores_por_nome(request):
+    if request.method == 'GET':
+        nome_filtro = request.GET.get('nome', '')
+        indicadores = Indicador.objects.filter(nome__icontains=nome_filtro)
+        serializer = IndicadorSerializer(indicadores, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+
 @api_view(['PUT'])
 def editar_indicador(request, id):
-    print(id)
-
     try:
         id = Indicador.objects.get(id=id)
     except Indicador.DoesNotExist:
@@ -344,6 +331,64 @@ def excluir_indicador(request, id):
     if request.method == 'DELETE':
         id.delete();
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+#------------------------------------------------SETORES------------------------------------------------#
+
+
+
+@api_view(['GET'])
+def visualizar_setores(request):
+
+    if request.method == 'GET':
+        scripts = Setor.objects.all()  # Get all objects in User's database (It returns a queryset)
+
+        serializer = SetorSerializer(scripts, many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+
+        return Response(serializer.data)  # Return the serialized data
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def cadastrar_setores(request):
+    if request.method == 'POST':
+        serializer = SetorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT'])
+def editar_setores(request, id):
+    try:
+        id = Setor.objects.get(id=id)
+    except Setor.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PUT':
+        serializer = SetorSerializer(id, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def excluir_setores(request, id):
+    try:
+        id = Setor.objects.get(id=id)
+    except Setor.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        id.delete();
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+
 
 # @api_view(['GET'])
 # def listar_informacoes_inicio(request):
