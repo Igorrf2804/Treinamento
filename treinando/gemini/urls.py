@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.urls import path, include
 
 from . import views
-from .views import TelaInicialViewSet, RelatorioViewSet
 
 urlpatterns = [
     # path('', views.get_users, name='get_all_users'),
@@ -15,21 +14,34 @@ urlpatterns = [
     path('cadastrar-pessoa', views.cadastrar_pessoa, name='cadastrar_pessoa'),
     path('editar-pessoa/<int:id>', views.editar_pessoa, name='editar_pessoa'),
     path('excluir-pessoa/<int:id>', views.excluir_pessoa, name='excluir_pessoa'),
-    # fazer rota que busca pessoas pelo id
+    path('pessoas-por-ids', views.listar_pessoas_por_ids, name='listar_pessoas_por_ids'),
+    path('pessoas-por-nome', views.listar_pessoas_por_nome, name='listar_pessoas_por_nome'),
 
     path('indicadores', views.listar_indicadores, name='listar_indicadores'),
     path('cadastrar-indicador', views.cadastrar_indicador, name='cadastrar_indicador'),
     path('editar-indicador/<int:id>', views.editar_indicador, name='editar_indicador'),
     path('excluir-indicador/<int:id>', views.excluir_indicador, name='excluir_indicador'),
-
-    path('inicio/', TelaInicialViewSet.as_view({'get' : 'listarDados'})),
+    path('indicadores-por-nome', views.listar_indicadores_por_nome, name='listar_indicadores_por_nome'),
 
     path('visualizar-setores/', views.visualizar_setores, name='visualizar-setores'),
     path('cadastrar-setores', views.cadastrar_setores, name='cadastrar-setores'),
     path('editar-setores/<int:id>', views.editar_setores, name='editar-setores'),
     path('excluir-setores/<int:id>', views.excluir_setores, name='excluir-setores'),
 
-    path('relatorio', RelatorioViewSet.as_view({'post' : 'enviar-relatorio'}))
-    # path('user/<str:nick>', views.get_by_nick),
-    # path('data/', views.user_manager)
+
+    path('redefinir-senha', views.redefinir_senha, name='redefinir_senha'),
+    path('alterar-senha', views.alterar_senha, name='alterar_senha'),
+
+
+
+
+
+
+
+
+    # path('inicio', views.listar_informacoes_inicio, name='listar_informacoes_inicio'),
+
+
+    # path('relatorio', views.gerar_relatorio, name='gerar-relatorio')
+
 ]

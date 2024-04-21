@@ -9,7 +9,7 @@ class PerguntaSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['usuario', 'senha']
+        fields = ['id', 'usuario', 'senha']
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
