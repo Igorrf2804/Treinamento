@@ -9,7 +9,7 @@ class PerguntaSerializer(serializers.ModelSerializer):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['usuario', 'senha']
+        fields = ['id', 'usuario', 'senha']
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
@@ -20,19 +20,19 @@ class ScriptsSerializer(serializers.ModelSerializer):
 class PessoaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pessoa
-        fields = ['nome', 'email']
+        fields = ['id', 'nome', 'email']
 
 class SetorSerializer(serializers.ModelSerializer):
     pessoas = serializers.PrimaryKeyRelatedField(queryset = Pessoa.objects.all(), many=True)
     class Meta:
         model = Setor
-        fields = ['nome', 'pessoas']
+        fields = ['id', 'nome', 'pessoas']
         depth = 1 
 
 class IndicadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Indicador
-        fields = ['nome', 'descricao']
+        fields = ['id', 'nome', 'descricao']
 
 class RelatorioSerializer(serializers.ModelSerializer):
     class Meta:
