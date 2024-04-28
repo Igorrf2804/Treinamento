@@ -5,12 +5,12 @@ from rest_framework import routers
 
 # from treinando.gemini.views import PerguntaViewSet, UsuarioViewSet
 
-from gemini.views import PerguntaViewSet, UsuarioViewSet
+from gemini.views import  UsuarioViewSet
 
 
 
 router = routers.DefaultRouter()
-router.register(r'perguntas', PerguntaViewSet)
+# router.register(r'perguntas', PerguntaViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
