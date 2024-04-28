@@ -254,8 +254,30 @@ Lembre-se de não solicitar nome e email do aluno atendido, o sistema fara isso 
         if resposta.candidates[0].content.parts[
             0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
                 resposta.candidates[0].content.parts[0].text:
-            print(resposta.candidates[0].content.parts[0].text)
             pergunta.resposta = resposta.candidates[0].content.parts[0].text
+ 
+            if "encami" in pergunta.resposta.lower():
+                for index in profissionais:
+
+                    if index['nome'] in pergunta.resposta:
+                        email = request.data.get('email')
+                        if Usuario.objects.filter(email=email).exists():
+                            tema = 'Encaminhamento realizado para você para os dias x/y/2024'
+                            msg = (f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get('user')} nos dias x/y/2024, por favor entre em contato quando possível')
+                            remetente = "ads.senac.tcs@gmail.com"
+                            send_mail(assunto, mensagem,remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+                        return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+                return Response({'mensagem': 'Ocorreu um erro ao realizar o encaminhamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+            
+            if "agend" in pergunta.resposta.lower():
+                for index in profissionais:
+
+                    if index['nome'] in pergunta.resposta:
+
+                        return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+
+                return Response({'mensagem': 'Ocorreu um erro ao realizar o agendamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+
             return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
             # return Response({'mensagem': 'deu ruim'})
 
