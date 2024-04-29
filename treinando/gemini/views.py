@@ -15,7 +15,14 @@ import random
 # Create your views here.
 
 GOOGLE_API_KEY = "AIzaSyCLOvpQv7soejToFewHRrAWRaUkUVYQu3g"
-
+profissionais = [
+    {
+        "nome": "Roberto Medeira",
+        "profissao": "Coordenador do curso de informática",
+        "curso": "Informática",
+        "profissão": "Desenvolvedor"
+    }
+]
 
 #---------------------------------------------INTEGRAÇÃO COM A GEMINI--------------------------------------------#
 
@@ -25,6 +32,7 @@ GOOGLE_API_KEY = "AIzaSyCLOvpQv7soejToFewHRrAWRaUkUVYQu3g"
 def create(request):
     serializer = PerguntaSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    serializer.save()
 
     user = request.data.get('user')
     pergunta_txt = request.data.get('pergunta')
@@ -45,18 +53,46 @@ def create(request):
         serializer = ScriptsSerializer(script)
         serialized_data.append(serializer.data)
 
-    descricoes = [item['descricao'] for item in serialized_data]
+    descricoes = [item['descricao'] for item in serialized_data] 
+    descricoes.append("Caso você não consiga realizar o atendimento por conta própria, realize um agendamento")
 
     chat.send_message(descricoes)
     resposta = chat.send_message(pergunta_txt)
 
+
     if resposta.candidates[0].content.parts[
         0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
-            resposta.candidates[0].content.parts[0].text:
-        print(resposta.candidates[0].content.parts[0].text)
-        # pergunta.resposta = resposta.candidates[0].content.parts[0].text
+        resposta.candidates[0].content.parts[0].text:
+        pergunta.resposta = resposta.candidates[0].content.parts[0].text
+
+        if "encami" in pergunta.resposta.lower():
+            for index in profissionais:
+                print(index["nome"])
+                if index['nome'] in pergunta.resposta:
+                    email = request.data.get('email')
+                    if Usuario.objects.filter(email=email).exists():
+                        tema = 'Encaminhamento realizado para você para os dias x/y/2024'
+                        msg = f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get("user")} nos dias x/y/2024, por favor entre em contato quando possível'
+                        remetente = "ads.senac.tcs@gmail.com"
+                        send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+                        return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+
+            return Response({'mensagem': 'Ocorreu um erro ao realizar o encaminhamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+            
+        if "agend" in pergunta.resposta.lower():
+            for index in profissionais:
+                if index['nome'] in pergunta.resposta:
+                    email = request.data.get('email')
+                    if Usuario.objects.filter(email=email).exists():
+                        tema = 'Reunião agendada para você para os dias x/y/2024'
+                        msg = f'Um agendamento foi realizado para você para o atendimento do usuário {request.data.get("user")} no dia x/y/2024 as 18:00'
+                        remetente = "ads.senac.tcs@gmail.com"
+                        send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+                        return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+
+            return Response({'mensagem': 'Ocorreu um erro ao realizar o agendamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+
         return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
-        # return Response({'mensagem': 'deu ruim'})
 
     return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
 
@@ -274,8 +310,6 @@ def cadastrar_indicador(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
 @api_view(['GET'])
 def listar_indicadores_por_nome(request):
     if request.method == 'GET':
@@ -284,7 +318,6 @@ def listar_indicadores_por_nome(request):
         serializer = IndicadorSerializer(indicadores, many=True)
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @api_view(['PUT'])
@@ -317,7 +350,6 @@ def excluir_indicador(request, id):
 #------------------------------------------------SETORES------------------------------------------------#
 
 
-
 @api_view(['GET'])
 def visualizar_setores(request):
 
@@ -329,6 +361,7 @@ def visualizar_setores(request):
         return Response(serializer.data)  # Return the serialized data
 
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def cadastrar_setores(request):
@@ -365,10 +398,6 @@ def excluir_setores(request, id):
     if request.method == 'DELETE':
         id.delete();
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-
-
 
 
 # @api_view(['GET'])
