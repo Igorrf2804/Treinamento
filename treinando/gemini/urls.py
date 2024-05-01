@@ -31,6 +31,11 @@ urlpatterns = [
 
     path('redefinir-senha', views.redefinir_senha, name='redefinir_senha'),
     path('alterar-senha', views.alterar_senha, name='alterar_senha'),
+    path('cadastrar-aluno', views.cadastrar_aluno, name='cadastrar-_aluno'),
+
+    path('instituicoes-por-nome', views.listar_instituicoes_por_nome, name='listar_instituicoes_por_nome'),
+    path('cursos-por-nome', views.listar_cursos_por_nome, name='listar_cursos_por_nome'),
+
 
     path('perguntas', views.create, name='perguntas')
 
