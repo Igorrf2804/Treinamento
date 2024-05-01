@@ -4,9 +4,9 @@ from django.core.mail import send_mail
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, UsuarioSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer
+from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Usuario, Pessoa, Setor, Indicador
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
@@ -49,9 +49,12 @@ def create(request):
 
     scripts = Script.objects.all()
     serialized_data = []
-    for script in scripts:
-        serializer = ScriptsSerializer(script)
-        serialized_data.append(serializer.data)
+    if len(scripts) > 0:
+        for script in scripts:
+            serializer = ScriptsSerializer(script)
+            serialized_data.append(serializer.data)
+    else:
+        return Response({'mensagem': 'Não existem scripts cadastrados'}, status=status.HTTP_400_BAD_REQUEST)
 
     descricoes = [item['descricao'] for item in serialized_data] 
     descricoes.append("Caso você não consiga realizar o atendimento por conta própria, realize um agendamento")
@@ -102,7 +105,7 @@ def create(request):
 def redefinir_senha(request):
     if request.method == 'POST':
         email = request.data.get('email')
-        if (Usuario.objects.filter(email=email).exists()):
+        if (Coordenador.objects.filter(email=email).exists()):
             codigo = gerar_codigo_verificacao()
             enviar_codigo_por_email(email, codigo)
             return Response(codigo, status=status.HTTP_201_CREATED)
@@ -125,12 +128,12 @@ def alterar_senha(request):
         senha = request.data.get('senha')  # Obtenha a senha dos dados da solicitação
 
         try:
-            usuario = Usuario.objects.get(email=email)
-        except Usuario.DoesNotExist:
+            usuario = Coordenador.objects.get(email=email)
+        except Coordenador.DoesNotExist:
             return Response("Usuário não encontrado", status=status.HTTP_404_NOT_FOUND)
 
         dados = {'usuario': usuario.usuario, 'senha': senha}
-        serializer = UsuarioSerializer(usuario, data=dados)
+        serializer = CoordenadorSerializer(usuario, data=dados)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -139,16 +142,50 @@ def alterar_senha(request):
     return Response("Método de solicitação inválido", status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+#-------------------------------------------------CADASTRAR ALUNO------------------------------------------------#
+
+@api_view(['POST'])
+def cadastrar_aluno(request):
+    if request.method == 'POST':
+        serializer = AlunoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#-------------------------------------------------INSTITUIÇÃO------------------------------------------------#
+
+@api_view(['GET'])
+def listar_instituicoes_por_nome(request):
+    if request.method == 'GET':
+        nome_filtro = request.GET.get('instituicao', '')
+        instituicoes = Instituicao.objects.filter(nome__icontains=nome_filtro)
+        serializer = InstituicaoSerializer(instituicoes, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+#-------------------------------------------------CURSO------------------------------------------------#
+
+@api_view(['GET'])
+def listar_cursos_por_nome(request):
+    if request.method == 'GET':
+        nome_filtro = request.GET.get('curso', '')
+        cursos = Curso.objects.filter(nome__icontains=nome_filtro)
+        serializer = CursoSerializer(cursos, many=True)
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
 #-------------------------------------------------LOGIN------------------------------------------------#
 
 class UsuarioViewSet(viewsets.ViewSet):
-    serializer_class = UsuarioSerializer
+    serializer_class = CoordenadorSerializer
 
     @action(detail=False, methods=['post'])
     def login(self, request):
-        usuario = request.data.get("usuario")
+        email = request.data.get("email")
         senha = request.data.get("senha")
-        if (Usuario.objects.filter(usuario=usuario, senha=senha).exists()):
+        if (Coordenador.objects.filter(email=email, senha=senha).exists()):
             return Response({'resultado': True}, status=status.HTTP_200_OK)
         else:
             return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
