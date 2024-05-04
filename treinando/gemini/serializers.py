@@ -9,7 +9,7 @@ class PerguntaSerializer(serializers.ModelSerializer):
 class CoordenadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coordenador
-        fields = ['id', 'usuario', 'senha']
+        fields = '__all__'
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:

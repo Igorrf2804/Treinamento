@@ -6,7 +6,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
@@ -147,6 +147,11 @@ def alterar_senha(request):
 @api_view(['POST'])
 def cadastrar_aluno(request):
     if request.method == 'POST':
+        email = request.data.get('email', None)
+        if email:
+            if Aluno.objects.filter(email=email).exists():
+                return Response({"email": "Este e-mail já está em uso."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = AlunoSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -185,8 +190,14 @@ class UsuarioViewSet(viewsets.ViewSet):
     def login(self, request):
         email = request.data.get("email")
         senha = request.data.get("senha")
-        if (Coordenador.objects.filter(email=email, senha=senha).exists()):
-            return Response({'resultado': True}, status=status.HTTP_200_OK)
+        coordenadorEncontrado = Coordenador.objects.filter(email=email, senha=senha).first()
+        alunoEncontrado = Aluno.objects.filter(email=email, senha=senha).first()
+        if coordenadorEncontrado:
+            serializer = CoordenadorSerializer(coordenadorEncontrado)
+            return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
+        elif alunoEncontrado:
+            serializer = AlunoSerializer(alunoEncontrado)
+            return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
 

@@ -28,7 +28,7 @@ class Coordenador(models.Model):
     id = models.AutoField(primary_key = True)
     nome = models.CharField(max_length = 255)
     senha = models.CharField(max_length = 30)
-    email = models.CharField(max_length = 50, default = 'email')
+    email = models.CharField(max_length = 50, unique=True)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
     tipoAcesso = models.CharField(max_length = 255, default = 'coordenador')
@@ -37,10 +37,10 @@ class Aluno(models.Model):
     id = models.AutoField(primary_key = True)
     nome = models.CharField(max_length = 255)
     senha = models.CharField(max_length = 30)
-    email = models.CharField(max_length = 50, default = 'email')
+    email = models.CharField(max_length = 50, unique=True)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
-
+    tipoAcesso = models.CharField(max_length = 255, default = 'aluno')
 
 class Script(models.Model):
     id = models.AutoField(primary_key = True)
