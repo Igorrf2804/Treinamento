@@ -28,19 +28,19 @@ class Coordenador(models.Model):
     id = models.AutoField(primary_key = True)
     nome = models.CharField(max_length = 255)
     senha = models.CharField(max_length = 30)
-    email = models.CharField(max_length = 50, default = 'email')
+    email = models.CharField(max_length = 50, unique=True)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
-    tipoAcesso = models.CharField(max_length = 255, default = 'coordenador')
+    tipoAcesso = models.CharField(max_length = 255, default = 'coordenador', editable=False)
 
 class Aluno(models.Model):
     id = models.AutoField(primary_key = True)
     nome = models.CharField(max_length = 255)
     senha = models.CharField(max_length = 30)
-    email = models.CharField(max_length = 50, default = 'email')
+    email = models.CharField(max_length = 50, unique=True)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
-
+    tipoAcesso = models.CharField(max_length = 255, default = 'aluno', editable=False)
 
 class Script(models.Model):
     id = models.AutoField(primary_key = True)
@@ -70,3 +70,14 @@ class Relatorio(models.Model):
     data_inicial = models.DateField()
     data_final = models.DateField()
     indicadores = models.ManyToManyField(Indicador)
+
+
+class Mensagem(models.Model):
+    id = models.AutoField(primary_key = True)
+    texto_mensagem = models.CharField(max_length = 200)
+    data_hora = models.DateTimeField()
+    id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
+    id_coordenador = models.ForeignKey(Coordenador, on_delete=models.CASCADE, null = True)
+    quem_enviou = models.CharField(max_length = 255)
+
+

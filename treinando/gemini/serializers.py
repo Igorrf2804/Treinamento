@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso
+from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem
 
 class PerguntaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,7 +9,7 @@ class PerguntaSerializer(serializers.ModelSerializer):
 class CoordenadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coordenador
-        fields = ['id', 'usuario', 'senha']
+        fields = '__all__'
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,3 +57,10 @@ class CursoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Curso
         fields = '__all__'
+
+class MensagemSerializer(serializers.ModelSerializer):
+    # gerar json dos modelos
+    class Meta:
+        model = Mensagem
+        fields = '__all__'
+
