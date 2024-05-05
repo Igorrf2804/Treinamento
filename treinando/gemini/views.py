@@ -4,9 +4,9 @@ from django.core.mail import send_mail
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer
+from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
@@ -447,6 +447,48 @@ def excluir_setores(request, id):
         id.delete();
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+#------------------------------------------------Salvar mensagem------------------------------------------------#
+@api_view(['POST'])
+def salvar_mensagem(request):
+    if request.method == 'POST':
+        serializer = MensagemSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
+
+@api_view(['GET'])
+def listar_mensagens_por_aluno(request):
+    if request.method == 'GET':
+        id_aluno = request.GET.get('id', '')
+
+        mensagens = Mensagem.objects.filter(id_aluno__in=id_aluno)
+
+        serializer = MensagemSerializer(mensagens, many=True)
+
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+#------------------------------------------------Listar todas as conversas------------------------------------------------#
+
+@api_view(['GET'])
+def listar_todos_alunos(request):
+    if request.method == 'GET':
+        # Obtém todas as mensagens que têm um aluno associado
+        mensagens_com_alunos = Mensagem.objects.exclude(id_aluno=None)
+
+        # Extrai os IDs únicos dos alunos
+        ids_alunos_unicos = mensagens_com_alunos.values_list('id_aluno', flat=True).distinct()
+
+        # Busca os dados dos alunos com base nos IDs únicos
+        alunos = Aluno.objects.filter(id__in=ids_alunos_unicos)
+
+        # Serializa os dados dos alunos
+        serializer = AlunoSerializer(alunos, many=True)
+
+        return Response(serializer.data)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 # @api_view(['GET'])
 # def listar_informacoes_inicio(request):
