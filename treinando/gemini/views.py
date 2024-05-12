@@ -1,10 +1,9 @@
-
-from django.contrib.auth.views import PasswordResetView, PasswordResetDoneView
 from django.core.mail import send_mail
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer
+from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, \
+    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer
 from django.views.decorators.csrf import csrf_exempt
 from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem
 import google.generativeai as genai
@@ -23,6 +22,7 @@ profissionais = [
         "profissão": "Desenvolvedor"
     }
 ]
+
 
 #---------------------------------------------INTEGRAÇÃO COM A GEMINI--------------------------------------------#
 
@@ -56,48 +56,48 @@ def create(request):
     else:
         return Response({'mensagem': 'Não existem scripts cadastrados'}, status=status.HTTP_400_BAD_REQUEST)
 
-    descricoes = [item['descricao'] for item in serialized_data] 
+    descricoes = [item['descricao'] for item in serialized_data]
     descricoes.append("Caso você não consiga realizar o atendimento por conta própria, realize um agendamento")
 
     chat.send_message(descricoes)
     resposta = chat.send_message(pergunta_txt)
 
-
     if resposta.candidates[0].content.parts[
         0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
-        resposta.candidates[0].content.parts[0].text:
+            resposta.candidates[0].content.parts[0].text:
         pergunta.resposta = resposta.candidates[0].content.parts[0].text
+        #
+        # if "encami" in pergunta.resposta.lower():
+        #     for index in profissionais:
+        #         print(index["nome"])
+        #         if index['nome'] in pergunta.resposta:
+        #             email = request.data.get('email')
+        #             if Usuario.objects.filter(email=email).exists():
+        #                 tema = 'Encaminhamento realizado para você para os dias x/y/2024'
+        #                 msg = f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get("user")} nos dias x/y/2024, por favor entre em contato quando possível'
+        #                 remetente = "ads.senac.tcs@gmail.com"
+        #                 send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+        #                 return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+        #
+        #     return Response({'mensagem': 'Ocorreu um erro ao realizar o encaminhamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+        #
+        # if "agend" in pergunta.resposta.lower():
+        #     for index in profissionais:
+        #         if index['nome'] in pergunta.resposta:
+        #             email = request.data.get('email')
+        #             if Usuario.objects.filter(email=email).exists():
+        #                 tema = 'Reunião agendada para você para os dias x/y/2024'
+        #                 msg = f'Um agendamento foi realizado para você para o atendimento do usuário {request.data.get("user")} no dia x/y/2024 as 18:00'
+        #                 remetente = "ads.senac.tcs@gmail.com"
+        #                 send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+        #                 return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
 
-        if "encami" in pergunta.resposta.lower():
-            for index in profissionais:
-                print(index["nome"])
-                if index['nome'] in pergunta.resposta:
-                    email = request.data.get('email')
-                    if Usuario.objects.filter(email=email).exists():
-                        tema = 'Encaminhamento realizado para você para os dias x/y/2024'
-                        msg = f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get("user")} nos dias x/y/2024, por favor entre em contato quando possível'
-                        remetente = "ads.senac.tcs@gmail.com"
-                        send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
-                        return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
-
-            return Response({'mensagem': 'Ocorreu um erro ao realizar o encaminhamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
-            
-        if "agend" in pergunta.resposta.lower():
-            for index in profissionais:
-                if index['nome'] in pergunta.resposta:
-                    email = request.data.get('email')
-                    if Usuario.objects.filter(email=email).exists():
-                        tema = 'Reunião agendada para você para os dias x/y/2024'
-                        msg = f'Um agendamento foi realizado para você para o atendimento do usuário {request.data.get("user")} no dia x/y/2024 as 18:00'
-                        remetente = "ads.senac.tcs@gmail.com"
-                        send_mail(assunto, mensagem, remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
-                        return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
-
-            return Response({'mensagem': 'Ocorreu um erro ao realizar o agendamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
+        # return Response({'mensagem': 'Ocorreu um erro ao realizar o agendamento, peço desculpas'}, status = status.HTTP_400_BAD_REQUEST)
 
         return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
 
     return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
+
 
 #---------------------------------------------REDEFINIR SENHA--------------------------------------------#
 
@@ -105,35 +105,45 @@ def create(request):
 def redefinir_senha(request):
     if request.method == 'POST':
         email = request.data.get('email')
-        if (Coordenador.objects.filter(email=email).exists()):
+        if (Coordenador.objects.filter(email=email).exists() or Aluno.objects.filter(email=email).exists()):
             codigo = gerar_codigo_verificacao()
             enviar_codigo_por_email(email, codigo)
             return Response(codigo, status=status.HTTP_201_CREATED)
         return Response("Usuário não encontrado", status=status.HTTP_400_BAD_REQUEST)
     return Response("Não foi possível enviar o código de verificação", status=status.HTTP_400_BAD_REQUEST)
 
+
 def gerar_codigo_verificacao():
     return str(random.randint(10000000, 99999999))
+
 
 def enviar_codigo_por_email(email, codigo):
     assunto = 'Código de verificação para redefinição de senha'
     mensagem = f'Seu código de verificação é: {codigo}'
     remetente = "ads.senac.tcs@gmail.com"
-    send_mail(assunto, mensagem,remetente, recipient_list=[email,'ads.senac.tcs@gmail.com'])
+    send_mail(assunto, mensagem, remetente, recipient_list=[email, 'ads.senac.tcs@gmail.com'])
+
 
 @api_view(['PUT'])
 def alterar_senha(request):
     if request.method == 'PUT':
         email = request.data.get('email')
-        senha = request.data.get('senha')  # Obtenha a senha dos dados da solicitação
+        senha = request.data.get('senha')
 
-        try:
-            usuario = Coordenador.objects.get(email=email)
-        except Coordenador.DoesNotExist:
+        usuarioCoordenador = Coordenador.objects.filter(email=email).exists()
+        usuarioAluno = Aluno.objects.filter(email=email).exists()
+
+        if(not usuarioAluno and not usuarioCoordenador):
             return Response("Usuário não encontrado", status=status.HTTP_404_NOT_FOUND)
 
-        dados = {'usuario': usuario.usuario, 'senha': senha}
-        serializer = CoordenadorSerializer(usuario, data=dados)
+        if usuarioCoordenador:
+            usuario = Coordenador.objects.get(email=email)
+            dados = {'email': email, 'senha': senha, 'nome': usuario.nome, 'curso': usuario.curso_id, 'instituicao': usuario.instituicao_id}
+            serializer = CoordenadorSerializer(usuario, data=dados)
+        else:
+            usuario = Aluno.objects.get(email=email)
+            dados = {'email': email, 'senha': senha, 'nome': usuario.nome, 'curso': usuario.curso_id, 'instituicao': usuario.instituicao_id}
+            serializer = AlunoSerializer(usuario, data=dados)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -158,6 +168,7 @@ def cadastrar_aluno(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 #-------------------------------------------------INSTITUIÇÃO------------------------------------------------#
 
 @api_view(['GET'])
@@ -181,6 +192,7 @@ def listar_cursos_por_nome(request):
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
+
 #-------------------------------------------------LOGIN------------------------------------------------#
 
 class UsuarioViewSet(viewsets.ViewSet):
@@ -201,12 +213,12 @@ class UsuarioViewSet(viewsets.ViewSet):
         else:
             return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
 
+
 #-------------------------------------------------SCRIPTS------------------------------------------------#
 
 
 @api_view(['GET'])
 def listar_scripts(request):
-
     if request.method == 'GET':
         scripts = Script.objects.all()  # Get all objects in User's database (It returns a queryset)
 
@@ -255,8 +267,6 @@ def excluir_script(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
 #-----------------------------------------------PESSOAS------------------------------------------------#
 
 
@@ -281,7 +291,6 @@ def cadastrar_pessoa(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @api_view(['GET'])
@@ -332,7 +341,6 @@ def excluir_pessoa(request, id):
 
 
 #--------------------------------------------INDICADORES------------------------------------------------#
-
 
 
 @api_view(['GET'])
@@ -400,11 +408,11 @@ def excluir_indicador(request, id):
 
 @api_view(['GET'])
 def visualizar_setores(request):
-
     if request.method == 'GET':
         scripts = Setor.objects.all()  # Get all objects in User's database (It returns a queryset)
 
-        serializer = SetorSerializer(scripts, many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
+        serializer = SetorSerializer(scripts,
+                                     many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
 
         return Response(serializer.data)  # Return the serialized data
 
@@ -447,6 +455,7 @@ def excluir_setores(request, id):
         id.delete();
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 #------------------------------------------------Salvar mensagem------------------------------------------------#
 @api_view(['POST'])
 def salvar_mensagem(request):
@@ -456,6 +465,7 @@ def salvar_mensagem(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 #------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
 
@@ -470,6 +480,8 @@ def listar_mensagens_por_aluno(request):
 
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
 #------------------------------------------------Listar todas as conversas------------------------------------------------#
 
 @api_view(['GET'])
@@ -493,6 +505,5 @@ def listar_todos_alunos(request):
 # @api_view(['GET'])
 # def listar_informacoes_inicio(request):
 
-    # fazer depois com que essa rota retorne o número de conversas
-    # e número de conversas sobre determinado assunto
-
+# fazer depois com que essa rota retorne o número de conversas
+# e número de conversas sobre determinado assunto
