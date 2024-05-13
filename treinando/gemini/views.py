@@ -101,8 +101,10 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                     print(profissional)
                     if profissional['usuario'] in pergunta.resposta:
                         email = profissional['email']
-                        u = Usuario.objects.filter(usuario = request.data.get('user'))
-                        if Usuario.objects.filter(email=email).exists() and u.exists():
+                        if Usuario.objects.filter(email=email).exists() and Usuario.objects.filter(usuario = request.data.get('user')).exists():
+
+                            u = UsuarioSerializer(Usuario.objects.filter(usuario = request.data.get('user')))
+
                             tema = 'Encaminhamento realizado para você para os dias x/y/2024'
                             msg = f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get("user")} nos dias x/y/2024, por favor entre em contato quando possível'
                             remetente = "ads.senac.tcs@gmail.com"
@@ -111,7 +113,7 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                             tema = f'Encaminhamento realizado com sucesso.'
                             msg = f'Você foi encaminhado durante o dia x/y/2024 para o profissional {profissional["usuario"]}, por favor aguarde um pouco para ser atendido'
                             remetente = "ads.senac.tcs@gmail.com"
-                            send_mail(tema, msg, remetente, recipient_list=[u.email,'ads.senac.tcs@gmail.com'])
+                            send_mail(tema, msg, remetente, recipient_list=[u.data['email'],'ads.senac.tcs@gmail.com'])
 
                             classificar_conversa(chat, request.data.get('user'))
                             return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
@@ -122,8 +124,10 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                 for profissional in serializer_profissionais:
                     if profissional['usuario'] in pergunta.resposta:
                         email = profissional['email']
-                        u = Usuario.objects.filter(usuario = request.data.get('user'))
-                        if Usuario.objects.filter(email=email).exists():
+                        if Usuario.objects.filter(email=email).exists() and Usuario.objects.filter(usuario = request.data.get('user')).exists():
+
+                            u = UsuarioSerializer(Usuario.objects.filter(usuario = request.data.get('user')))
+
                             tema = 'Reunião agendada para você para os dias x/y/2024'
                             msg = f'Um agendamento foi realizado para você para o atendimento do usuário {request.data.get("user")} no dia x/y/2024 as 18:00'
                             remetente = "ads.senac.tcs@gmail.com"
@@ -132,7 +136,7 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                             tema = f'Reunião agendada com sucesso.'
                             msg = f'Você agendou com sucesso uma reunião para o dia x/y/2024 as 17:00 com o profissional {profissional["usuario"]}'
                             remetente = "ads.senac.tcs@gmail.com"
-                            send_mail(tema, msg, remetente, recipient_list=[u.email,'ads.senac.tcs@gmail.com'])
+                            send_mail(tema, msg, remetente, recipient_list=[u.data['email'],'ads.senac.tcs@gmail.com'])
 
                             classificar_conversa(chat, request.data.get('user'))
                             return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
