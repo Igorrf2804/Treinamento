@@ -1,6 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.contrib.auth.models import User
+from treinando.gemini.models import Coordenador, Aluno
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -52,3 +52,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': message
         }))
+        
