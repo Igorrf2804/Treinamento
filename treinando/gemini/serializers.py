@@ -2,14 +2,16 @@ from rest_framework import serializers
 from .models import Pergunta, Usuario, Script, Pessoa, Setor, Indicador, Relatorio
 
 class PerguntaSerializer(serializers.ModelSerializer):
+    cont = serializers.IntegerField(required=False)
+
     class Meta:
         model = Pergunta
-        fields = ['user', 'pergunta']
+        fields = ['user', 'pergunta', 'cont']
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'usuario', 'senha']
+        fields = ['id', 'usuario', 'senha', 'email']
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
