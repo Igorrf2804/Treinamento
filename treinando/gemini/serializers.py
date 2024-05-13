@@ -2,9 +2,11 @@ from rest_framework import serializers
 from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem
 
 class PerguntaSerializer(serializers.ModelSerializer):
+    cont = serializers.IntegerField(required=False)
+
     class Meta:
         model = Pergunta
-        fields = ['user', 'pergunta']
+        fields = ['user', 'pergunta', 'cont']
 
 class CoordenadorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,9 +15,8 @@ class CoordenadorSerializer(serializers.ModelSerializer):
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Aluno
-        fields = '__all__'
-
+        model = Usuario
+        fields = ['id', 'usuario', 'senha', 'email']
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
