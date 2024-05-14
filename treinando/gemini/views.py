@@ -474,7 +474,7 @@ def listar_mensagens_por_aluno(request):
     if request.method == 'GET':
         id_aluno = request.GET.get('id', '')
 
-        mensagens = Mensagem.objects.filter(id_aluno=id_aluno)
+        mensagens = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id')
 
         serializer = MensagemSerializer(mensagens, many=True)
 
