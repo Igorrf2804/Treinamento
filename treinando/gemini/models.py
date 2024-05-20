@@ -81,3 +81,9 @@ class Mensagem(models.Model):
     quem_enviou = models.CharField(max_length = 255)
 
 
+class ControleBot(models.Model):
+    bot_pode_responder = models.BooleanField(default=True)
+    id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
+
+
+

@@ -43,6 +43,8 @@ urlpatterns = [
     path('listar-todos-alunos', views.listar_todos_alunos, name='listar_todos_alunos'),
     path("chat", views.index, name="index"),
     path("<str:room_name>/", views.room, name="room"),
+    path('mudar-status-bot', views.mudar_status_bot, name='mudar_status_bot'),
+    path('verificar-status-bot', views.verificar_status_bot, name='verificar_status_bot'),
 
 
 
