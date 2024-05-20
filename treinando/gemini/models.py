@@ -7,14 +7,17 @@ class Indicador(models.Model):
     nome = models.CharField(max_length = 100)
     descricao = models.CharField(max_length = 1000)
 
+    def __str__(self):
+        return self.nome
+
 class Pergunta(models.Model):
     id = models.AutoField(primary_key = True)
     user = models.CharField(max_length=100)
-    pergunta = models.CharField(max_length=200)
-    resposta = models.TextField(blank = True, editable=False)
-    indicador = models.ForeignKey(Indicador, related_name='indicador', editable=False, blank=True, on_delete= models.SET_NULL, null=True)
+    pergunta = models.TextField(max_length=10000)
+    resposta = models.TextField(blank = True)
+    indicador = models.ForeignKey(Indicador, related_name='indicador', blank=True, on_delete= models.SET_NULL, null=True)
     def __str__(self):
-        return self.pergunta
+        return str(self.indicador) + ' ' + self.pergunta
 
 class Usuario(models.Model):
     id = models.AutoField(primary_key = True)
@@ -33,7 +36,7 @@ class Pessoa(models.Model):
     email = models.CharField(max_length = 255)
 
     def __str__(self):
-        return (self.nome)
+        return self.nome
     
 
 class Setor(models.Model):

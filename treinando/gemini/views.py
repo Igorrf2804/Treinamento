@@ -103,8 +103,8 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                         email = profissional['email']
                         if Usuario.objects.filter(email=email).exists() and Usuario.objects.filter(usuario = request.data.get('user')).exists():
 
-                            u = UsuarioSerializer(Usuario.objects.filter(usuario = request.data.get('user')))
-
+                            u = UsuarioSerializer(Usuario.objects.get(usuario = request.data.get('user')))
+                            print(u.data)
                             tema = 'Encaminhamento realizado para você para os dias x/y/2024'
                             msg = f'Um encaminhamento foi realizado para você para o atendimento do usuário {request.data.get("user")} nos dias x/y/2024, por favor entre em contato quando possível'
                             remetente = "ads.senac.tcs@gmail.com"
@@ -126,7 +126,7 @@ O chatbot nunca deve fazer um encaminhamento ou agendamento sem antes perguntar 
                         email = profissional['email']
                         if Usuario.objects.filter(email=email).exists() and Usuario.objects.filter(usuario = request.data.get('user')).exists():
 
-                            u = UsuarioSerializer(Usuario.objects.filter(usuario = request.data.get('user')))
+                            u = UsuarioSerializer(Usuario.objects.get(usuario = request.data.get('user')))
 
                             tema = 'Reunião agendada para você para os dias x/y/2024'
                             msg = f'Um agendamento foi realizado para você para o atendimento do usuário {request.data.get("user")} no dia x/y/2024 as 18:00'
@@ -158,20 +158,28 @@ def classificar_conversa(chat: genai.ChatSession, usuario):
         serializer = IndicadorSerializer(indicador)
         serializer_indicadores.append(serializer.data)
     
-    msg = 'Gemini, classifique nossa conversa com um dos seguintes indicadores e retorne ele para mim: ' + ', '.join(serializer_indicadores.nome)
+    msg = 'Gemini, classifique nossa conversa com um dos seguintes indicadores e retorne ele para mim: ' + ', '.join([item['nome'] for item in serializer_indicadores])
     dados = {
         "user": usuario,
         "pergunta": msg
     }
-    pergunta_serializer = PerguntaSerializer(data=request.data)
-    pergunta_serializer.is_valid(raise_exception=True)
-    pergunta_serializer.save()
+    pergunta = Pergunta(
+        user = usuario,
+        pergunta = msg
+    )
+    pergunta.usuario = dados['user'],
     resposta = chat.send_message(msg)
-    pergunta_serializer.resposta = resposta.candidates[0].content.parts[0].text
+    pergunta.resposta = resposta.candidates[0].content.parts[0].text
+
     for indicador in serializer_indicadores:
-        if indicador.nome in resposta:
-            pergunta_serializer.indicador = indicador.id
+        if indicador['nome'] in pergunta.resposta:
+            
+            pergunta.indicador = Indicador.objects.get(id = indicador['id'])
+            pergunta.save()            # pergunta_serializer = PerguntaSerializer(pergunta)
+            # pergunta_serializer.save()
+
             return True
+
     return False
 
 
