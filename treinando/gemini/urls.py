@@ -40,7 +40,13 @@ urlpatterns = [
 
     path('salvar-mensagem', views.salvar_mensagem, name='salvar_mensagem'),
     path('listar-mensagens-por-aluno', views.listar_mensagens_por_aluno, name='listar_mensagens_por_aluno'),
-    path('listar-todos-alunos', views.listar_todos_alunos, name='listar_todos_alunos')
+    path('listar-todos-alunos', views.listar_todos_alunos, name='listar_todos_alunos'),
+    path("chat", views.index, name="index"),
+    path("<str:room_name>/", views.room, name="room"),
+    path('mudar-status-bot', views.mudar_status_bot, name='mudar_status_bot'),
+    path('verificar-status-bot', views.verificar_status_bot, name='verificar_status_bot'),
+
+
 
 
 

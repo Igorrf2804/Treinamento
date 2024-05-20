@@ -74,10 +74,16 @@ class Relatorio(models.Model):
 
 class Mensagem(models.Model):
     id = models.AutoField(primary_key = True)
-    texto_mensagem = models.CharField(max_length = 200)
+    texto_mensagem = models.CharField(max_length = 10000)
     data_hora = models.DateTimeField()
     id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
     id_coordenador = models.ForeignKey(Coordenador, on_delete=models.CASCADE, null = True)
     quem_enviou = models.CharField(max_length = 255)
+
+
+class ControleBot(models.Model):
+    bot_pode_responder = models.BooleanField(default=True)
+    id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
+
 
 

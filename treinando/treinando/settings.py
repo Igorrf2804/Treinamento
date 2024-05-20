@@ -10,6 +10,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -133,3 +134,16 @@ EMAIL_HOST_PASSWORD="rytvimwvfgrcrslk"
 EMAIL_USE_TLS=True
 EMAIL_PORT =587
 EMAIL_HOST='smtp.gmail.com'
+
+
+
+
+ASGI_APPLICATION = "treinando.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}

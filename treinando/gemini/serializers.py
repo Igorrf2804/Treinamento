@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem
+from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem, ControleBot
 
 class PerguntaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,3 +64,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         model = Mensagem
         fields = '__all__'
 
+class ControleBotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControleBot
+        fields = '__all__'

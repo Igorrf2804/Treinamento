@@ -3,15 +3,28 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, \
-    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer
+    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer, ControleBotSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem, ControleBot
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
 import random
 
 # Create your views here.
+
+
+# chat/views.py
+from django.shortcuts import render
+
+
+def index(request):
+    return render(request, "chat/index.html")
+
+def room(request, room_name):
+    return render(request, "chat/room.html", {"room_name": room_name})
+
+
 
 GOOGLE_API_KEY = "AIzaSyCLOvpQv7soejToFewHRrAWRaUkUVYQu3g"
 profissionais = [
@@ -474,7 +487,7 @@ def listar_mensagens_por_aluno(request):
     if request.method == 'GET':
         id_aluno = request.GET.get('id', '')
 
-        mensagens = Mensagem.objects.filter(id_aluno__in=id_aluno)
+        mensagens = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id')
 
         serializer = MensagemSerializer(mensagens, many=True)
 
@@ -507,3 +520,57 @@ def listar_todos_alunos(request):
 
 # fazer depois com que essa rota retorne o número de conversas
 # e número de conversas sobre determinado assunto
+
+
+
+#------------------------------------------------Mudar status bot------------------------------------------------#
+@api_view(['POST'])
+def mudar_status_bot(request):
+    if request.method == 'POST':
+        status_bot = request.data.get('status')
+        id_aluno = request.data.get('id_aluno')
+
+        controle_bot = ControleBot.objects.filter(id_aluno=id_aluno).first()
+        if controle_bot:
+            dados = {'bot_pode_responder': status_bot, 'id_aluno': controle_bot.id_aluno.id}
+            serializer = ControleBotSerializer(controle_bot, data=dados)
+        else:
+            dados = {'bot_pode_responder': status_bot, 'id_aluno': id_aluno}
+            serializer = ControleBotSerializer(data=dados)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def verificar_status_bot(request):
+    if request.method == 'GET':
+        id_aluno = request.query_params.get('id_aluno')
+        print(request)
+
+        if id_aluno is None:
+            return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        controle_bot = ControleBot.objects.filter(id_aluno=id_aluno).first()
+        if controle_bot:
+            serializer = ControleBotSerializer(controle_bot)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "ControleBot não encontrado para o id_aluno fornecido"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+    #
+    # serializer = MensagemSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
