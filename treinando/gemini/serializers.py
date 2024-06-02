@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem
+from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem, ControleBot
 
 class PerguntaSerializer(serializers.ModelSerializer):
     cont = serializers.IntegerField(required=False)
@@ -12,11 +12,37 @@ class CoordenadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coordenador
         fields = '__all__'
+        extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        coordenador = Coordenador(
+            nome=validated_data['nome'],
+            email=validated_data['email'],
+            instituicao=validated_data['instituicao'],
+            curso=validated_data['curso'],
+            tipoAcesso=validated_data['tipoAcesso'],
+        )
+        coordenador.set_password(validated_data['senha'])
+        coordenador.save()
+        return coordenador
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['id', 'usuario', 'senha', 'email']
+        extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        aluno = Aluno(
+            nome=validated_data['nome'],
+            email=validated_data['email'],
+            instituicao=validated_data['instituicao'],
+            curso=validated_data['curso'],
+            tipoAcesso=validated_data['tipoAcesso'],
+        )
+        aluno.set_password(validated_data['senha'])
+        aluno.save()
+        return aluno
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
@@ -65,3 +91,7 @@ class MensagemSerializer(serializers.ModelSerializer):
         model = Mensagem
         fields = '__all__'
 
+class ControleBotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ControleBot
+        fields = '__all__'
