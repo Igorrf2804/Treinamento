@@ -49,6 +49,12 @@ def create(request):
 
     user = request.data.get('user')
     pergunta_txt = request.data.get('pergunta')
+    historico = request.data.get('historico')
+    contador = int(request.data.get('contador'))
+
+    if (contador >= 6):
+        return Response({'mensagem': 'Você gostaria de realizar um encaminhamento ou agendamento para ajudá-lo?'}, status=status.HTTP_201_CREATED)
+
     pergunta = serializer.instance
 
     genai.configure(api_key=GOOGLE_API_KEY)
@@ -565,12 +571,50 @@ def verificar_status_bot(request):
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def realizar_agendamento(request):
+    if request.method == 'POST':
+        print(request)
+        duvida = request.data.get('duvida')
+        id_aluno = request.data.get('id_aluno')
+
+        if id_aluno is None:
+            return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        aluno = Aluno.objects.get(id=id_aluno)
+        coordenador = Coordenador.objects.filter(instituicao=aluno.instituicao_id, curso=aluno.curso_id).first()
+                   
+        if coordenador:
+            assunto = 'Agendamento realizado'
+            msg = f'Um agendamento foi realizado para você para o atendimento do aluno {aluno.nome}, por favor entre em contato quando possível. Assunto: {duvida}' 
+            remetente = "ads.senac.tcs@gmail.com"
+            send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])        
+
+            # classificar_conversa(chat, request.data.get('user'))
+            return Response({'mensagem': "O agendamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+def realizar_encaminhamento(request):
+    if request.method == 'POST':
+        duvida = request.data.get('duvida')
+        id_aluno = request.data.get('id_aluno')
+        pessoas = request.data.get('setor').get('pessoas')
 
-    #
-    # serializer = MensagemSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if id_aluno is None:
+            return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        aluno = Aluno.objects.get(id=id_aluno)
+        pessoas_setor = Pessoa.objects.filter(id__in=pessoas)
+
+        if pessoas_setor:
+            for pessoa in pessoas_setor:
+                assunto = 'Encaminhamento realizado'
+                msg = f'Um encaminhamento foi realizado para você para o atendimento do aluno {aluno.nome}, por favor entre em contato quando possível. Assunto: {duvida}' 
+                remetente = "ads.senac.tcs@gmail.com"
+                send_mail(assunto, msg, remetente, recipient_list=[pessoa.email,'ads.senac.tcs@gmail.com', aluno.email])        
+                # classificar_conversa(chat, request.data.get('user'))
+        return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
