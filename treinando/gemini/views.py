@@ -52,14 +52,29 @@ def create(request):
     historico = request.data.get('historico')
     contador = int(request.data.get('contador'))
 
+    formatted_messages = []
+
+    role_map = {
+        'aluno': 'user',
+        'bot': 'model'
+    }
+
+    for hist in historico:
+        role = role_map.get(hist['quem_enviou'], 'user')
+        parts = hist['texto_mensagem']
+        formatted_messages.append({
+            'role': role,
+            'parts': parts
+        })
+
     if (contador >= 6):
         return Response({'mensagem': 'Você gostaria de realizar um encaminhamento ou agendamento para ajudá-lo?'}, status=status.HTTP_201_CREATED)
 
     pergunta = serializer.instance
 
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-pro')
-    chat = model.start_chat(history=[])
+    model = genai.GenerativeModel('gemini-pro') 
+    chat = model.start_chat(history=formatted_messages)
     # Você é o Chatbot customizado da empresa CoordenaAgora, a partir de agora você irá responder perguntas
     # com x informações, e caso sejam mandados prompt que não sejam relacionados a área da educação você
     # irá responder: "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos", obs isso inclui
