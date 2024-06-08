@@ -3,13 +3,15 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, \
-    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer, ControleBotSerializer
+    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer, ControleBotSerializer, ConversaSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem, ControleBot
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem, ControleBot, Conversa
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
 import random
+from datetime import datetime, timedelta
+from django.utils import timezone as django_timezone
 
 # Create your views here.
 
@@ -35,6 +37,8 @@ profissionais = [
         "profissão": "Desenvolvedor"
     }
 ]
+
+
 
 
 #---------------------------------------------INTEGRAÇÃO COM A GEMINI--------------------------------------------#
@@ -479,11 +483,92 @@ def excluir_setores(request, id):
 @api_view(['POST'])
 def salvar_mensagem(request):
     if request.method == 'POST':
-        serializer = MensagemSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        id_aluno = request.data.get('id_aluno')
+        id_coordenador = request.data.get('id_coordenador')
+        ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
+
+        
+    if ultima_mensagem:
+        now = django_timezone.now()
+        hora_ultima_mensagem = ultima_mensagem.data_hora
+        diferenca = now - hora_ultima_mensagem
+
+        # tres_horas = timedelta(hours=3)
+        # tres_horas = timedelta(seconds=3)
+        tres_horas = timedelta(minutes=3)
+
+        if diferenca > tres_horas:
+            if(id_aluno):
+                user = id_aluno
+            else:
+                user = id_coordenador
+            historico_conversa = Mensagem.objects.filter(id_conversa=ultima_mensagem.id_conversa).order_by('id');
+
+            formatted_messages = []
+
+            role_map = {
+                'aluno': 'user',
+                'bot': 'model'
+            }
+
+            for message in historico_conversa:
+                role = role_map.get(message.quem_enviou, 'user')
+                parts = message.texto_mensagem
+                formatted_messages.append({
+                    'role': role,
+                    'parts': parts
+                })
+                
+            request.data['id_conversa'] = ultima_mensagem.id_conversa.id
+            classificar_conversa(formatted_messages, user, ultima_mensagem.id_conversa)
+            request.data['id_conversa'] = adicionar_conversa()
+            serializer = salvar_nova_mensagem(request) 
+            return Response(status=status.HTTP_201_CREATED)
+        elif (ultima_mensagem.id_conversa == None):
+            request.data['id_conversa'] = adicionar_conversa()
+            serializer = salvar_nova_mensagem(request)      
+            if(serializer):      
+                return Response(serializer.data, status=status_conversa.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status_conversa.HTTP_400_BAD_REQUEST)
+        else:
+            status_conversa = verificar_status_conversa(ultima_mensagem.id_conversa.id)
+            if(status_conversa == True):
+                request.data['id_conversa'] = ultima_mensagem.id_conversa.id
+                serializer = salvar_nova_mensagem(request)
+                return Response(status=status.HTTP_201_CREATED)
+            else:
+                request.data['id_conversa'] = adicionar_conversa()
+                serializer = salvar_nova_mensagem(request) 
+                return Response(status=status_conversa.HTTP_201_CREATED)
+    else:
+        request.data['id_conversa'] = adicionar_conversa()
+        serializer = salvar_nova_mensagem(request) 
+        return Response(status=status.HTTP_201_CREATED)
+
+def salvar_nova_mensagem(request):
+    serializer = MensagemSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return serializer
+    
+def verificar_status_conversa(id_conversa):
+    conversa = Conversa.objects.get(id=id_conversa)
+    return conversa.status
+
+def adicionar_conversa():
+    # ultimo_id = Conversa.objects.order_by('-id').values('id').first()
+    # return ultimo_id + 1;
+    data = {
+        'status': True
+    }
+    serializer = ConversaSerializer(data = data)
+    if serializer.is_valid():
+        conversa = serializer.save();
+        return conversa.id
+    return None
+
+
+    
 
 
 #------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
@@ -556,7 +641,6 @@ def mudar_status_bot(request):
 def verificar_status_bot(request):
     if request.method == 'GET':
         id_aluno = request.query_params.get('id_aluno')
-        print(request)
 
         if id_aluno is None:
             return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
@@ -574,7 +658,6 @@ def verificar_status_bot(request):
 @api_view(['POST'])
 def realizar_agendamento(request):
     if request.method == 'POST':
-        print(request)
         duvida = request.data.get('duvida')
         id_aluno = request.data.get('id_aluno')
 
@@ -617,4 +700,67 @@ def realizar_encaminhamento(request):
                 # classificar_conversa(chat, request.data.get('user'))
         return Response({'mensagem': "O encaminhamento foi realizado com sucesso!"}, status=status.HTTP_201_CREATED)
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+def classificar_conversa(historico, usuario, id_conversa):
+
+
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-pro')
+    chat = model.start_chat(history=historico)
+
+    indicadores = Indicador.objects.all()
+    serializer_indicadores = []
+    for indicador in indicadores:
+        serializer = IndicadorSerializer(indicador)
+        serializer_indicadores.append(serializer.data)
+    
+    msg = 'Gemini, classifique nossa conversa com um dos seguintes indicadores e retorne ele para mim. Não retorne nenhuma outra informação além do indicador e deve ser apenas 1 indicador, aquele que mais se encaixa. Os indicadores podem ser: ' + ', '.join([item['nome'] for item in serializer_indicadores])
+    print(msg)
+    dados = {
+        "user": usuario,
+        "pergunta": msg
+    }
+    pergunta = Pergunta(
+        user = usuario,
+        pergunta = msg
+    )
+    pergunta.usuario = dados['user'],
+    resposta = chat.send_message(msg)
+    pergunta.resposta = resposta.candidates[0].content.parts[0].text
+
+
+
+    for indicador in serializer_indicadores:
+        if indicador['nome'].lower() in pergunta.resposta.lower():
+            
+            serializer_indicador = Indicador.objects.get(id = indicador['id'])
+            # print(' pergunta.indicador------------------',  indicador)
+            # pergunta.indicador = indicador
+            # pergunta.save() 
+            
+            try:
+                conversa = Conversa.objects.get(id=id_conversa.id)
+            except Conversa.DoesNotExist:
+                conversa = None
+                print("Conversa com o id fornecido não existe.")
+
+            if conversa:
+                conversa.status = False
+                conversa.id_indicador = serializer_indicador 
+
+                serializer = ConversaSerializer(conversa, data={
+                    'status': conversa.status,
+                    'id_indicador': conversa.id_indicador.id,  
+                    'outros_campos': 'valores'  
+                }, partial=True) 
+
+                if serializer.is_valid():
+                    serializer.save()
+                else:
+                    print(serializer.errors) 
+
+            return True
+
+    return False
 

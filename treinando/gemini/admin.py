@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Pergunta, Coordenador, Setor, Indicador, Pessoa, Relatorio, Script, Instituicao, Curso, Aluno, Mensagem, ControleBot
+from .models import Pergunta, Coordenador, Setor, Indicador, Pessoa, Relatorio, Script, Instituicao, Curso, Aluno, Mensagem, ControleBot, Conversa
 
 # Register your models here.
 
@@ -15,3 +15,4 @@ admin.site.register(Curso)
 admin.site.register(Aluno)
 admin.site.register(Mensagem)
 admin.site.register(ControleBot)
+admin.site.register(Conversa)
