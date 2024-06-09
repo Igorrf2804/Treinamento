@@ -71,6 +71,11 @@ class Relatorio(models.Model):
     data_final = models.DateField()
     indicadores = models.ManyToManyField(Indicador)
 
+class Conversa(models.Model):
+    id = models.AutoField(primary_key = True)
+    id_indicador = models.ForeignKey(Indicador, on_delete=models.DO_NOTHING,  null = True)
+    status = models.BooleanField(default=True)
+
 
 class Mensagem(models.Model):
     id = models.AutoField(primary_key = True)
@@ -79,11 +84,10 @@ class Mensagem(models.Model):
     id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
     id_coordenador = models.ForeignKey(Coordenador, on_delete=models.CASCADE, null = True)
     quem_enviou = models.CharField(max_length = 255)
+    id_conversa = models.ForeignKey(Conversa, on_delete=models.DO_NOTHING,  null = True)
+
 
 
 class ControleBot(models.Model):
     bot_pode_responder = models.BooleanField(default=True)
     id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
-
-
-
