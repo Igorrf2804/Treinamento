@@ -114,6 +114,3 @@ class Mensagem(models.Model):
 class ControleBot(models.Model):
     bot_pode_responder = models.BooleanField(default=True)
     id_aluno = models.ForeignKey(Aluno, on_delete=models.CASCADE, null = True)
-
-
-
