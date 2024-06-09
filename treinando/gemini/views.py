@@ -3,9 +3,9 @@ from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from .serializers import PerguntaSerializer, CoordenadorSerializer, PessoaSerializer, SetorSerializer, \
-    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer, ControleBotSerializer
+    IndicadorSerializer, InstituicaoSerializer, CursoSerializer, AlunoSerializer, MensagemSerializer, ControleBotSerializer, ConversaSerializer
 from django.views.decorators.csrf import csrf_exempt
-from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem, ControleBot
+from .models import Pergunta, Script, Coordenador, Pessoa, Setor, Indicador, Instituicao, Curso, Aluno, Mensagem, ControleBot, Conversa
 import google.generativeai as genai
 from .serializers import ScriptsSerializer
 from rest_framework.decorators import api_view, action
@@ -212,7 +212,6 @@ class UsuarioViewSet(viewsets.ViewSet):
     def login(self, request):
         email = request.data.get("email")
         senha = request.data.get("senha")
-
         coordenador = Coordenador.objects.filter(email=email).first()
         if coordenador and coordenador.check_senha(senha):
             serializer = CoordenadorSerializer(coordenador)
@@ -224,7 +223,7 @@ class UsuarioViewSet(viewsets.ViewSet):
             serializer = AlunoSerializer(aluno)
             return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
 
-        return Response({'resultado': False, 'mensagem': 'Credenciais inválidas'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
 
 
 #-------------------------------------------------SCRIPTS------------------------------------------------#
