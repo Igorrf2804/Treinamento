@@ -254,7 +254,6 @@ class UsuarioViewSet(viewsets.ViewSet):
         email = request.data.get("email")
         senha = request.data.get("senha")
 
-        # Verifica Coordenador
         coordenador = Coordenador.objects.filter(email=email).first()
         if coordenador and coordenador.check_senha(senha):
             serializer = CoordenadorSerializer(coordenador)
