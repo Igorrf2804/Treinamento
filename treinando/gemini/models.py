@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
-
+import bcrypt
 
 # Create your models here.
 
@@ -25,23 +25,35 @@ class Instituicao(models.Model):
     def __str__(self):
         return self.nome
 
+
 class Curso(models.Model):
-    id = models.AutoField(primary_key = True)
-    nome = models.CharField(max_length = 255)
+    id = models.AutoField(primary_key=True)
+    nome = models.CharField(max_length=255)
 
     def __str__(self):
         return self.nome
 
+
 class Coordenador(models.Model):
-    id = models.AutoField(primary_key = True)
-    nome = models.CharField(max_length = 255)
+    id = models.AutoField(primary_key=True)
+    nome = models.CharField(max_length=255)
     senha = models.CharField(max_length=128)
-    email = models.CharField(max_length = 50, unique=True)
+    email = models.CharField(max_length=50, unique=True)
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
     tipoAcesso = models.CharField(max_length = 255, default = 'coordenador', editable=False)
-    def set_password(self, raw_password):
-        self.senha = make_password(raw_password)
+
+    def set_senha(self, raw_password):
+        self.senha = bcrypt.hashpw(raw_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def check_senha(self, raw_password):
+        return bcrypt.checkpw(raw_password.encode('utf-8'), self.senha.encode('utf-8'))
+
+    def save(self, *args, **kwargs):
+        if not self.pk or Coordenador.objects.get(pk=self.pk).senha != self.senha:
+            self.set_senha(self.senha)
+        super().save(*args, **kwargs)
+
 
 class Aluno(models.Model):
     id = models.AutoField(primary_key = True)
@@ -51,8 +63,17 @@ class Aluno(models.Model):
     instituicao = models.ForeignKey(Instituicao, on_delete=models.CASCADE)
     curso = models.ForeignKey(Curso, on_delete=models.CASCADE)
     tipoAcesso = models.CharField(max_length = 255, default = 'aluno', editable=False)
-    def set_password(self, raw_password):
-        self.senha = make_password(raw_password)
+
+    def set_senha(self, raw_password):
+        self.senha = bcrypt.hashpw(raw_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def check_senha(self, raw_password):
+        return bcrypt.checkpw(raw_password.encode('utf-8'), self.senha.encode('utf-8'))
+
+    def save(self, *args, **kwargs):
+        if not self.pk or Aluno.objects.get(pk=self.pk).senha != self.senha:
+            self.set_senha(self.senha)
+        super().save(*args, **kwargs)
 
 class Script(models.Model):
     id = models.AutoField(primary_key = True)

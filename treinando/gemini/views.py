@@ -253,16 +253,20 @@ class UsuarioViewSet(viewsets.ViewSet):
     def login(self, request):
         email = request.data.get("email")
         senha = request.data.get("senha")
-        coordenadorEncontrado = Coordenador.objects.filter(email=email, senha=senha).first()
-        alunoEncontrado = Aluno.objects.filter(email=email, senha=senha).first()
-        if coordenadorEncontrado:
-            serializer = CoordenadorSerializer(coordenadorEncontrado)
+
+        # Verifica Coordenador
+        coordenador = Coordenador.objects.filter(email=email).first()
+        if coordenador and coordenador.check_senha(senha):
+            serializer = CoordenadorSerializer(coordenador)
             return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
-        elif alunoEncontrado:
-            serializer = AlunoSerializer(alunoEncontrado)
+
+        # Verifica Aluno
+        aluno = Aluno.objects.filter(email=email).first()
+        if aluno and aluno.check_senha(senha):
+            serializer = AlunoSerializer(aluno)
             return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
-        else:
-            return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({'resultado': False, 'mensagem': 'Credenciais inválidas'}, status=status.HTTP_404_NOT_FOUND)
 
 
 #-------------------------------------------------SCRIPTS------------------------------------------------#

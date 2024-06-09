@@ -22,14 +22,14 @@ class CoordenadorSerializer(serializers.ModelSerializer):
             curso=validated_data['curso'],
             tipoAcesso=validated_data['tipoAcesso'],
         )
-        coordenador.set_password(validated_data['senha'])
+        coordenador.set_senha(validated_data['senha'])
         coordenador.save()
         return coordenador
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Usuario
-        fields = ['id', 'usuario', 'senha', 'email']
+        model = Aluno
+        fields = ['id', 'nome', 'senha', 'email', 'instituicao', 'curso', 'tipoAcesso']
         extra_kwargs = {'senha': {'write_only': True}}
 
     def create(self, validated_data):
@@ -40,7 +40,7 @@ class AlunoSerializer(serializers.ModelSerializer):
             curso=validated_data['curso'],
             tipoAcesso=validated_data['tipoAcesso'],
         )
-        aluno.set_password(validated_data['senha'])
+        aluno.set_senha(validated_data['senha'])
         aluno.save()
         return aluno
 
