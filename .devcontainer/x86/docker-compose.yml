@@ -1,4 +1,4 @@
-version: "3.8" 
+version: "3.8"
 
 services:
   app:
@@ -8,4 +8,10 @@ services:
     ports:
       - "3000:8080"
     command: ["python", "app.py"]
+    depends_on:
+      - redis  # Adiciona esta linha para depender do serviço redis
 
+  redis:
+    image: "redis:latest"  # Use a imagem mais recente do Redis
+    ports:
+      - "6379:6379"
