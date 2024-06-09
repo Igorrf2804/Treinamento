@@ -2,8 +2,6 @@ from rest_framework import serializers
 from .models import Pergunta, Coordenador, Script, Pessoa, Setor, Indicador, Relatorio, Aluno, Instituicao, Curso, Mensagem, ControleBot, Conversa
 
 class PerguntaSerializer(serializers.ModelSerializer):
-    cont = serializers.IntegerField(required=False)
-
     class Meta:
         model = Pergunta
         fields = ['user', 'pergunta']
