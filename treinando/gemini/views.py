@@ -56,7 +56,7 @@ def create(request):
     user = request.data.get('user')
     pergunta_txt = request.data.get('pergunta')
     historico = request.data.get('historico')
-    contador = int(request.data.get('contador'))
+    id_aluno = request.data.get('id_aluno')
 
     formatted_messages = []
 
@@ -72,42 +72,41 @@ def create(request):
             'role': role,
             'parts': parts
         })
+    
+    ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();    
+    mensagem_count = Mensagem.objects.filter(id_conversa_id=ultima_mensagem.id_conversa, quem_enviou='aluno').count()
+    controle_bot = get_controle_bot(id_aluno)
 
-    # if (contador >= 6):
-    #     return Response({'mensagem': 'Você gostaria de realizar um encaminhamento ou agendamento para ajudá-lo?'}, status=status.HTTP_201_CREATED)
-
-    pergunta = serializer.instance
-
-    genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-pro') 
-    chat = model.start_chat(history=formatted_messages)
-    # Você é o Chatbot customizado da empresa CoordenaAgora, a partir de agora você irá responder perguntas
-    # com x informações, e caso sejam mandados prompt que não sejam relacionados a área da educação você
-    # irá responder: "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos", obs isso inclui
-    # perguntas que não tem haver com problemas como histórico escolar, encaminhamento, agendamento, comunicar ao
-    # coordenador etc
-
-    scripts = Script.objects.all()
-    serialized_data = []
-    if len(scripts) > 0:
-        for script in scripts:
-            serializer = ScriptsSerializer(script)
-            serialized_data.append(serializer.data)
+    if(controle_bot.bot_pode_responder and mensagem_count >= 6):
+        return Response({'mensagem': 'A conversa foi finalizada'}, status=status.HTTP_201_CREATED)
     else:
-        return Response({'mensagem': 'Não existem scripts cadastrados'}, status=status.HTTP_400_BAD_REQUEST)
+        pergunta = serializer.instance
 
-    descricoes = [item['descricao'] for item in serialized_data]
-    instrucao = 'Você deve responder a mensagem: "' + pergunta_txt + '" com base nas seguintes instruções: ' + ', '.join(descricoes) + '. Caso a mensagem não corresponda a nenhuma instrução você deve responder: "Desculpe não consigo responder essa pergunta."'
-    print(instrucao)
-    resposta = chat.send_message(instrucao)
+        genai.configure(api_key=GOOGLE_API_KEY)
+        model = genai.GenerativeModel('gemini-pro') 
+        chat = model.start_chat(history=formatted_messages)
 
-    if resposta.candidates[0].content.parts[
-        0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
-            resposta.candidates[0].content.parts[0].text:
-        pergunta.resposta = resposta.candidates[0].content.parts[0].text
-        return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
+        scripts = Script.objects.all()
+        serialized_data = []
+        if len(scripts) > 0:
+            for script in scripts:
+                serializer = ScriptsSerializer(script)
+                serialized_data.append(serializer.data)
+        else:
+            return Response({'mensagem': 'Não existem scripts cadastrados'}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
+        descricoes = [item['descricao'] for item in serialized_data]
+        instrucao = 'Você deve responder a mensagem: "' + pergunta_txt + '" com base nas seguintes instruções: ' + ', '.join(descricoes) + '. Caso a mensagem não corresponda a nenhuma instrução você deve responder: "Desculpe não consigo responder essa pergunta."'
+        print(instrucao)
+        resposta = chat.send_message(instrucao)
+
+        if resposta.candidates[0].content.parts[
+            0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
+                resposta.candidates[0].content.parts[0].text:
+            pergunta.resposta = resposta.candidates[0].content.parts[0].text
+            return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
+
+        return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
 
 
 #---------------------------------------------REDEFINIR SENHA--------------------------------------------#
@@ -507,8 +506,8 @@ def salvar_mensagem(request):
             if ultima_mensagem.quem_enviou == 'aluno':
                 verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)    
             if(serializer):      
-                return Response(serializer.data, status=status_conversa.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status_conversa.HTTP_400_BAD_REQUEST)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             #se não passou mais de três horas desde a última mensagem do aluno
             status_conversa = verificar_status_conversa(ultima_mensagem.id_conversa.id)
@@ -525,7 +524,7 @@ def salvar_mensagem(request):
                 serializer = salvar_nova_mensagem(request) 
                 if ultima_mensagem.quem_enviou == 'aluno':
                     verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)
-                return Response(status=status_conversa.HTTP_201_CREATED)
+                return Response(status=status.HTTP_201_CREATED)
     else:
         #se não tem uma última mensagem (se o aluno não enviou nenhuma mensagem ainda)
         request.data['id_conversa'] = adicionar_conversa()
@@ -650,6 +649,7 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
                         
                         # Envia o email
                         send_mail(assunto, msg, remetente, recipient_list)   
+                        classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
                         return Response({'mensagem': "Foi realizado um encaminhamento para o setor responsável, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
              
                     return
@@ -665,6 +665,7 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
                 msg = f'Um agendamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \n{conversa_formatada}'
                 remetente = "ads.senac.tcs@gmail.com"
                 send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])        
+                classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
                 return Response({'mensagem': "Foi realizado um agendamento para o coordenador do seu curso, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
 
 
@@ -759,8 +760,6 @@ def get_controle_bot(id_aluno):
 
 
 def classificar_conversa(historico, usuario, id_conversa):
-
-
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel('gemini-pro')
     chat = model.start_chat(history=historico)
