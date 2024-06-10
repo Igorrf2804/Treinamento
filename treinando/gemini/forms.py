@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 
 class CoordenadorAdminForm(forms.ModelForm):
-    nova_senha = forms.CharField(required=False, widget=forms.PasswordInput)
+    nova_senha = forms.CharField(required=True, widget=forms.PasswordInput)
 
     class Meta:
         model = Coordenador
@@ -19,16 +19,10 @@ class CoordenadorAdminForm(forms.ModelForm):
             coordenador.save()
         return coordenador
 
-    def clean(self):
-        cleaned_data = super().clean()
-        nova_senha = cleaned_data.get('nova_senha')
-        if nova_senha == '':
-            raise ValidationError("A senha não pode ser vazia.")
-        return cleaned_data
 
 
 class AlunoAdminForm(forms.ModelForm):
-    nova_senha = forms.CharField(required=False, widget=forms.PasswordInput)
+    nova_senha = forms.CharField(required=True, widget=forms.PasswordInput)
 
     class Meta:
         model = Aluno
@@ -43,8 +37,3 @@ class AlunoAdminForm(forms.ModelForm):
             aluno.save()
         return aluno
 
-    def clean(self):
-        nova_senha = self.cleaned_data.get('nova_senha')
-        if nova_senha == '':
-            raise ValidationError("A senha não pode ser vazia.")
-        return nova_senha

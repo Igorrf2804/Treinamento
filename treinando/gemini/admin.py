@@ -16,6 +16,7 @@ class AlunoAdmin(admin.ModelAdmin):
     form = AlunoAdminForm
     list_display = ['nome', 'email', 'instituicao', 'curso', 'tipoAcesso']
 
+
 admin.site.register(Coordenador, CoordenadorAdmin)
 admin.site.register(Aluno, AlunoAdmin)
 admin.site.register(Pergunta)
