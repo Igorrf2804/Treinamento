@@ -10,12 +10,37 @@ class CoordenadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Coordenador
         fields = '__all__'
+        extra_kwargs = {'senha': {'write_only': True}}
+
+    def create(self, validated_data):
+        coordenador = Coordenador(
+            nome=validated_data['nome'],
+            email=validated_data['email'],
+            instituicao=validated_data['instituicao'],
+            curso=validated_data['curso'],
+            tipoAcesso=validated_data['tipoAcesso'],
+        )
+        coordenador.set_senha(validated_data['senha'])
+        coordenador.save()
+        return coordenador
 
 class AlunoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Aluno
-        fields = '__all__'
+        fields = ['id', 'nome', 'senha', 'email', 'instituicao', 'curso', 'tipoAcesso']
+        extra_kwargs = {'senha': {'write_only': True}}
 
+    def create(self, validated_data):
+        aluno = Aluno(
+            nome=validated_data['nome'],
+            email=validated_data['email'],
+            instituicao=validated_data['instituicao'],
+            curso=validated_data['curso'],
+            tipoAcesso=validated_data['tipoAcesso'],
+        )
+        aluno.set_senha(validated_data['senha'])
+        aluno.save()
+        return aluno
 
 class ScriptsSerializer(serializers.ModelSerializer):
     # gerar json dos modelos
@@ -69,10 +94,8 @@ class ControleBotSerializer(serializers.ModelSerializer):
         model = ControleBot
         fields = '__all__'
 
-        
+
 class ConversaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Conversa
         fields = '__all__'
-
-
