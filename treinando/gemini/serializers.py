@@ -35,8 +35,7 @@ class AlunoSerializer(serializers.ModelSerializer):
             nome=validated_data['nome'],
             email=validated_data['email'],
             instituicao=validated_data['instituicao'],
-            curso=validated_data['curso'],
-            tipoAcesso=validated_data['tipoAcesso'],
+            curso=validated_data['curso']
         )
         aluno.set_senha(validated_data['senha'])
         aluno.save()
