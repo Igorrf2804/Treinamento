@@ -581,22 +581,34 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
         genai.configure(api_key=GOOGLE_API_KEY)
         model = genai.GenerativeModel('gemini-pro')
         chat = model.start_chat(history=historico_conversa)
-        classificacao = chat.send_message("Com base na nossa conversa você deve realizar um encaminhamento " + 
+        classificacao = chat.send_message(f"Com base nessa conversa {historico_conversa} você deve realizar um encaminhamento " + 
                                      "ou agendamento. Utilize as informações abaixo para fazer a classificação de encaminhar " +
                                      "ou agendar: Agendamento: Você deve avaliar as mensagens enviadas e verificar se elas tem " +
-                                     "relação com: planejamento e problemas acadêmicos: Escolha de disciplinas e planejamento de cursos; " +
+                                     "relação com: Escolha de disciplinas e planejamento de cursos; " +
                                      "Dúvidas sobre requisitos de graduação e pré-requisitos de disciplinas; Orientação sobre mudanças de " +
-                                     "curso ou transferência entre programas, orientação profissional: Informações sobre estágios, oportunidades "+ 
+                                     "curso ou transferência entre programas; orientação profissional; Informações sobre estágios, oportunidades "+ 
                                      "de emprego e carreiras relacionadas ao curso; Networking e eventos de carreira; problemas " +
-                                     "com professores ou colegas: Conflitos ou problemas de comunicação com professores; Questões sobre a metodologia " +
-                                     "de ensino ou avaliação; e casos especiais: Trancamento do curso. O agendamento é quando o coordenador " +
-                                     "recebe uma demanda. Você não deve classificar como agendamento caso as mensagens não " +
-                                     "tiverem relação com os itens citados. Já o encaminhamento é quando o assunto não tem " +
+                                     "com professores ou colegas; Conflitos ou problemas de comunicação com professores; Questões sobre a metodologia " +
+                                     "de ensino ou avaliação; Trancamento do curso; Divulgação de informações importantes relacionadas ao curso. " +
+                                     "Representação do curso em reuniões institucionais; Monitoramento do desempenho acadêmico dos alunos,  " +
+                                     "identificando aqueles que precisam de apoio adicional; Aconselhamento sobre a escolha de disciplinas  " +
+                                     "e trajetórias acadêmicas; Orientação e suporte na elaboração de projetos de pesquisa e trabalhos de conclusão de curso (TCC)." +
+                                     "Coleta de feedback dos alunos sobre disciplinas e professores; Implementação de melhorias baseadas nas avaliações dos alunos. " +
+                                     "Promoção de canais abertos para sugestões e críticas dos alunos; Coordenação de semanas acadêmicas e outros eventos que envolvam a participação ativa dos alunos." +
+                                     ". O agendamento é quando o coordenador recebe uma demanda. Já o encaminhamento é quando o assunto não tem " +
                                      "relação com o coordenador de curso, os assuntos que recebem a classificação encaminhamento são: " +
-                                     "questões administrativas, biblioteca, infraestrutura e assuntos acadêmicos gerais. O encaminhamento " +
-                                     "é quando a assunto é relacionado a outros setores da instituição de ensino superior que não seja " +
+                                     "questões administrativas, biblioteca, infraestrutura e assuntos acadêmicos gerais, alguns exemplos são: " +
+                                     "validação de horas complementares, atestado de matrícula, rematrícula e matrícula de novos alunos, emitir diplomas,emitir declarações " +
+                                     "atualizar dados dos alunos, fornecer informações sobre cursos e disciplinas, Organizar e divulgar calendários acadêmicos, " +
+                                     "Gerenciar reservas de salas e equipamentos, Informar sobre programas de bolsas de estudo e financiamentos,  " +
+                                     "Organizar e apoiar eventos como seminários, palestras, congressos e formaturas, Oferecer suporte técnico a alunos e professores" +
+                                     "Aquisição de livros, periódicos, e-books e outros materiais de interesse para o curso. " +
+                                     "Empréstimo, renovação e reserva de materiais bibliográficos, Serviço de referência para ajudar alunos e professores na pesquisa de informações. " +
+                                     "Assistência na elaboração de projetos de pesquisa e na busca de fontes de informação." +
+                                     "Treinamentos em técnicas de busca e uso de bibliografias e citações. " +
+                                     ". O encaminhamento é quando a assunto é relacionado a outros setores da instituição de ensino superior que não seja " +
                                      "a coordenação de curso. Você não deve classificar como encaminhamento caso as mensagens não " +
-                                     "tiverem relação com os itens citados. Você precisa retornar apenas uma palavra: encaminhamento ou agendamento")
+                                     "tiverem relação com os itens citados. Você precisa retornar apenas uma palavra: encaminhamento ou agendamento e justifique sua escolha")
         print(classificacao.text)
 
         role_map = {
@@ -614,7 +626,7 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
             return formatted_str
         conversa_formatada = format_dialogue(historico_conversa)
 
-        if (classificacao.text.lower() == 'encaminhamento'):
+        if ('encaminhamento' in classificacao.text.lower() ):
             setores = Setor.objects.all()
             serializer_setores = []
             for setor in setores:
@@ -626,11 +638,39 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
             
             
             
-            instrucao = "Com base na seguinte conversa: \n " + conversa_formatada + "\n você deve classificar o setor que o assunto da conversa mais se encaixa. O setores podem ser: financeiro: relacionados a segunda via de boletos; secretaria: relacionados a atestado de matrícula, histórico acadêmico e validação de horas complementares; biblioteca: relacionado ao aluguel de livros acadêmicos. Você deve retornar apenas o nome do setor em letras minúsculas. Você não deve retornar um setor que não seja um desses enviados."
+            instrucao = (f"Com base na seguinte conversa: \n " + conversa_formatada + "\n " +
+                "você deve classificar o setor que o assunto da conversa mais se encaixa. " +
+                "O setores podem ser: \nsetor financeiro: esse setor trata de assuntos relacionados a segunda via de boletos. "+
+                "Emissão de boletos e cobranças mensais. Acompanhamento de pagamentos e inadimplência. Negociação de prazos e condições de pagamento. "+
+                "Geração de comprovantes de pagamento. Fornecimento de relatórios financeiros para alunos e responsáveis. "+
+                "Estratégias de cobrança e renegociação de dívidas; Implementação de planos de pagamento personalizados para alunos em atraso. "+
+                "Manutenção de registros detalhados de todos os pagamentos efetuados pelos alunos. "+
+                "Controle financeiro durante processos de matrícula e rematrícula. "+
+                "Verificação de pendências financeiras antes da confirmação de matrícula. "+
+                "\nsetor secretaria: esse setor trata de assuntos relacionados a atestado de matrícula, histórico acadêmico, validação de horas complementares; " +
+                "Processamento de inscrições e renovações de matrícula; Manutenção de registros de alunos matriculados. " +
+                "Fornecimento de históricos escolares, certificados de conclusão, atestados de matrícula e frequência. " +
+                "Emissão de boletins e relatórios de desempenho acadêmico. " +
+                "Orientação e suporte a alunos, pais e responsáveis. " +
+                "Resposta a dúvidas e fornecimento de informações sobre processos acadêmicos e administrativos. " +
+                "Organização e manutenção de arquivos físicos e digitais de alunos, professores e funcionários. " +
+                "Atualização de dados cadastrais. " +
+                "Envio de comunicados e avisos aos alunos, pais e equipe. " +
+                "Gestão de canais de comunicação, como e-mails, boletins informativos e murais. " +
+                "Planejamento e coordenação de eventos escolares, como formaturas, palestras, feiras e reuniões de pais. " +
+                "Logística e suporte para a realização de atividades extracurriculares. " +
+                "Registro e monitoramento da presença de alunos e professores. " +
+                "Emissão de relatórios de frequência. " +
+                "\nSetor biblioteca: esse setor trata de assuntos relacionados a Empréstimo, renovação e reserva de materiais bibliográficos, Serviço de referência para ajudar alunos e professores na pesquisa de informações. " +
+                "Assistência na elaboração de projetos de pesquisa e na busca de fontes de informação." +
+                "Treinamentos em técnicas de busca e uso de bibliografias e citações. " +
+                "Você deve retornar apenas o nome do setor em letras minúsculas. " +
+                "Você não deve retornar um setor que não seja um desses enviados." )
+            print(instrucao)
             setor = model.generate_content(instrucao)
             
             for setor_serializer in serializer_setores:
-                if setor_serializer['nome'].strip().lower() == setor.text.strip().lower():
+                if setor_serializer['nome'].strip().lower() in setor.text.strip().lower():
                     pessoas_ids = setor_serializer['pessoas']
                     pessoas_setor = Pessoa.objects.filter(id__in=pessoas_ids)
                     for pessoa in pessoas_setor:
@@ -651,25 +691,28 @@ def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem)
                         send_mail(assunto, msg, remetente, recipient_list)   
                         classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
                         return Response({'mensagem': "Foi realizado um encaminhamento para o setor responsável, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
-             
                     return
+                else:
+                    enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao)
         else:
-            if id_aluno is None:
-                return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
-        
-            aluno = Aluno.objects.get(id=id_aluno)
-            coordenador = Coordenador.objects.filter(instituicao=aluno.instituicao_id, curso=aluno.curso_id).first()
-                    
-            if coordenador:
-                assunto = 'Agendamento realizado'
-                msg = f'Um agendamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \n{conversa_formatada}'
-                remetente = "ads.senac.tcs@gmail.com"
-                send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])        
-                classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
-                return Response({'mensagem': "Foi realizado um agendamento para o coordenador do seu curso, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
-
-
+            enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao)
+            
     
+def enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao):
+    if id_aluno is None:
+        return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    aluno = Aluno.objects.get(id=id_aluno)
+    coordenador = Coordenador.objects.filter(instituicao=aluno.instituicao_id, curso=aluno.curso_id).first()
+            
+    if coordenador:
+        assunto = 'Agendamento realizado'
+        msg = f'Um agendamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \nChat:\n{conversa_formatada} \n\n Justificativa do agendamento: {classificacao.text}'
+        remetente = "ads.senac.tcs@gmail.com"
+        send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])        
+        classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
+        return Response({'mensagem': "Foi realizado um agendamento para o coordenador do seu curso, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
+
 
 
 #------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
@@ -766,11 +809,16 @@ def classificar_conversa(historico, usuario, id_conversa):
 
     indicadores = Indicador.objects.all()
     serializer_indicadores = []
+    nome_descricao_indicadores = ""
     for indicador in indicadores:
         serializer = IndicadorSerializer(indicador)
         serializer_indicadores.append(serializer.data)
+        indicador_descricao = (f"{indicador.nome}: {indicador.descricao}; ")
+        nome_descricao_indicadores += indicador_descricao
+
+
     
-    msg = 'Gemini, classifique nossa conversa com um dos seguintes indicadores e retorne ele para mim. Não retorne nenhuma outra informação além do indicador e deve ser apenas 1 indicador, aquele que mais se encaixa. Os indicadores podem ser: ' + ', '.join([item['nome'] for item in serializer_indicadores])
+    msg = (f"Gemini, classifique a conversa: {historico} com um dos seguintes indicadores e retorne ele para mim. Não retorne nenhuma outra informação além do indicador e deve ser apenas 1 indicador, aquele que mais se encaixa. Os indicadores podem ser: {nome_descricao_indicadores}")
     print(msg)
     dados = {
         "user": usuario,
@@ -807,7 +855,6 @@ def classificar_conversa(historico, usuario, id_conversa):
                 serializer = ConversaSerializer(conversa, data={
                     'status': conversa.status,
                     'id_indicador': conversa.id_indicador.id,  
-                    'outros_campos': 'valores'  
                 }, partial=True) 
 
                 if serializer.is_valid():
