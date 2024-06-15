@@ -13,7 +13,7 @@ import random
 from datetime import datetime, timedelta
 from django.utils import timezone as django_timezone
 from django.core.exceptions import ObjectDoesNotExist
-
+import psycopg2
 
 # Create your views here.
 
@@ -821,3 +821,12 @@ def classificar_conversa(historico, usuario, id_conversa):
 
     return False
 
+@api_view(['GET'])
+def gerar_relatorio(request):
+    try:
+        data_inicial = request.data.get('data_inicial')
+        data_final = request.data.get('data_final')
+    except:
+        return Response({"error": "Erro ao obter dados da requisição"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    query = "select * from gemini_mensagem where "
