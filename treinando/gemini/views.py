@@ -821,12 +821,12 @@ def classificar_conversa(historico, usuario, id_conversa):
 
     return False
 
-@api_view(['GET'])
+@api_view(['POST'])
 def gerar_relatorio(request):
     try:
-        data_inicial = request.data.get('data_inicial')
-        data_final = request.data.get('data_final')
+        data_inicial = request.data.get('data_inicial') + ' 00:00:00'
+        data_final = request.data.get('data_final') + ' 00:00:00'
     except:
         return Response({"error": "Erro ao obter dados da requisição"}, status=status.HTTP_400_BAD_REQUEST)
     
-    query = "select * from gemini_mensagem where "
+    query = f"select * from gemini_mensagem where data_hora between {data_inicial} and {data_final}"
