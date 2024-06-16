@@ -16,3 +16,4 @@ channels
 channels_redis
 daphne
 bcrypt==4.1.3
+reportlab

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone as django_timezone
 from django.core.exceptions import ObjectDoesNotExist
 import psycopg2
+import reportlab
 
 # Create your views here.
 
@@ -821,12 +822,54 @@ def classificar_conversa(historico, usuario, id_conversa):
 
     return False
 
+def strToDatetime(data):
+    formato_string = "%Y-%m-%dT%H:%M:%S.%fZ"
+    return datetime.strptime(data, formato_string)
+
 @api_view(['POST'])
 def gerar_relatorio(request):
     try:
-        data_inicial = request.data.get('data_inicial') + ' 00:00:00'
-        data_final = request.data.get('data_final') + ' 00:00:00'
+        coordenador_id = request.data.get('coordenador_id')
+        indicadores = request.data.get('indicadores')
+        data_inicial = strToDatetime(request.data.get('data_inicial'))
+        data_final = strToDatetime(request.data.get('data_final'))
     except:
         return Response({"error": "Erro ao obter dados da requisição"}, status=status.HTTP_400_BAD_REQUEST)
     
-    query = f"select * from gemini_mensagem where data_hora between {data_inicial} and {data_final}"
+    teste = Conversa.objects.all()
+    print(type(teste[0].data_hora))
+    count = {}
+    for indicador in indicadores:
+        count[indicador['nome']] = Conversa.objects.filter(data_hora__range=[data_inicial, data_final], id_indicador = indicador['id']).count()
+    print(count)
+    conversas = ConversaSerializer(Conversa.objects.filter(data_hora__range=[data_inicial, data_final], id_indicador = indicador ), many=True)
+    
+
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+    print(conversas[0].id_indicador)
+    # query = f"select * from gemini_mensagem where data_hora between {data_inicial} and {data_final}"
+    # mensagens = Mensagem.objects.filter(data_hora__range=[data_inicial, data_final])
+    # mensagens = MensagemSerializer(mensagens, many=True)
+
+    # conversas = []
+    # count = {}
+    # total = 0
+    # for indicador in indicadores:
+    #     indicador = IndicadorSerializer(indicador)
+    #     count[indicador.data['nome']] = 0
+    #     for mensagem in mensagens.data:
+    #         conversa = ConversaSerializer(Conversa.objects.filter(id=mensagem['id_conversa']))
+    #         print(conversa.data)
+    #         if conversa.data not in conversas:
+    #             conversas += conversa.data
+    #             total += 1
+    
+    # print(count)
+    # for conversa in conversas:
+    #     for indicador in indicadores:
+    #         print(conversa)
+    #         if conversa['id_indicador'] == indicador.id:
+    #             count[indicador.nome] += 1
+    
+    # print(conversa)

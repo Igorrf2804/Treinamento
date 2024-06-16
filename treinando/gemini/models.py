@@ -1,5 +1,6 @@
 from django.db import models
 import bcrypt
+from datetime import datetime
 
 # Create your models here.
 class Pergunta(models.Model):
@@ -99,8 +100,7 @@ class Relatorio(models.Model):
 class Conversa(models.Model):
     id = models.AutoField(primary_key = True)
     id_indicador = models.ForeignKey(Indicador, on_delete=models.DO_NOTHING,  null = True)
-    status = models.BooleanField(default=True)
-
+    data_hora = models.DateTimeField(auto_now_add=True)
 
 class Mensagem(models.Model):
     id = models.AutoField(primary_key = True)
