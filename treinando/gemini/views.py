@@ -366,7 +366,8 @@ def excluir_pessoa(request, id):
 @api_view(['GET'])
 def listar_indicadores(request):
     if request.method == 'GET':
-        indicadores = Indicador.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        indicadores = Indicador.objects.filter(id_coordenador=id_coordenador, status=True)  # Get all objects in User's database (It returns a queryset)
 
         serializer = IndicadorSerializer(indicadores,
                                          many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
@@ -411,15 +412,17 @@ def editar_indicador(request, id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['DELETE'])
+@api_view(['PUT'])
 def excluir_indicador(request, id):
     try:
         id = Indicador.objects.get(id=id)
     except Indicador.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'DELETE':
-        id.delete();
+    if request.method == 'PUT':
+        serializer = IndicadorSerializer(id, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -476,15 +479,30 @@ def excluir_setores(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+#------------------------------------------------Salvar mensagem coordenador------------------------------------------------#
+@api_view(['POST'])
+def salvar_mensagem_coordenador(request):
+    if request.method == 'POST':
+        texto_mensagem = request.data.get('texto_mensagem')
+        data_hora = request.data.get('data_hora')
+        quem_enviou = request.data.get('quem_enviou')
+        id_aluno = request.data.get('id_aluno')
+        id_coordenador = request.data.get('id_coordenador')
+        salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora)
+        return Response(status=status.HTTP_201_CREATED)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
 #------------------------------------------------Salvar mensagem------------------------------------------------#
-def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora  ):
+
+def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora):
     ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
     
     data = {
         'texto_mensagem': texto_mensagem,
         'data_hora': data_hora,
         'quem_enviou':  quem_enviou,
-        'id_aluno': id_aluno
+        'id_aluno': id_aluno,
+        'id_coordenador': id_coordenador
     }
 
     if ultima_mensagem:
@@ -602,7 +620,7 @@ def verificar_encaminhamento_agendamento(id_aluno, ultima_mensagem):
                                     ". O agendamento é quando o coordenador recebe uma demanda. Já o encaminhamento é quando o assunto não tem " +
                                     "relação com o coordenador de curso, os assuntos que recebem a classificação encaminhamento são: " +
                                     "questões administrativas, biblioteca, infraestrutura e assuntos acadêmicos gerais, alguns exemplos são: " +
-                                    "validação de horas complementares, atestado de matrícula, rematrícula e matrícula de novos alunos, emitir diplomas,emitir declarações " +
+                                    "validação de horas complementares, histórico acadêmico, atestado de matrícula, rematrícula e matrícula de novos alunos, emitir diplomas,emitir declarações " +
                                     "atualizar dados dos alunos, fornecer informações sobre cursos e disciplinas, Organizar e divulgar calendários acadêmicos, " +
                                     "Gerenciar reservas de salas e equipamentos, Informar sobre programas de bolsas de estudo e financiamentos,  " +
                                     "Organizar e apoiar eventos como seminários, palestras, congressos e formaturas, Oferecer suporte técnico a alunos e professores" +
@@ -624,9 +642,9 @@ def verificar_encaminhamento_agendamento(id_aluno, ultima_mensagem):
     if ('encaminhamento' in classificacao.text.lower()):
         setor = realiza_acao_encaminhamento(conversa_formatada, model, id_aluno, historico_conversa, ultima_mensagem, classificacao)
         if(setor == "Foi determinado que o assunto tem relação com as atribuições do coordenador"):
-            return {'tipo': "agendamento", 'setor': setor}
+            return {'tipo': "agendamento", 'setor': None}
         else:
-            return {'tipo': "encaminhamento", 'setor': setor}
+            return {'tipo': "encaminhamento", 'setor': setor.text}
     else:
         enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao.text)
         return "agendamento"
@@ -709,7 +727,7 @@ def realiza_acao_encaminhamento(conversa_formatada, model, id_aluno, historico_c
                 return
             
             assunto = 'Encaminhamento realizado'
-            msg = f'Um encaminhamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \n{conversa_formatada}. Justificativa do encaminhamento: {classificacao.text}'
+            msg = f'Um encaminhamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \nChat:\n{conversa_formatada}\n\n Justificativa do encaminhamento: {classificacao.text}'
             remetente = "ads.senac.tcs@gmail.com"
             for pessoa in pessoas_setor:
                 recipient_list = [pessoa.email, 'ads.senac.tcs@gmail.com', aluno.email]
@@ -837,27 +855,32 @@ def classificar_conversa(historico, usuario, id_conversa):
     resposta = chat.send_message(msg)
     pergunta.resposta = resposta.candidates[0].content.parts[0].text
 
-
+    try:
+        conversa = Conversa.objects.get(id=id_conversa.id)
+    except Conversa.DoesNotExist:
+        conversa = None
+        print("Conversa com o id fornecido não existe.")
 
     for indicador in serializer_indicadores:
-        try:
-            conversa = Conversa.objects.get(id=id_conversa.id)
-        except Conversa.DoesNotExist:
-            conversa = None
-            print("Conversa com o id fornecido não existe.")
         conversa.status = False
         if indicador['nome'].lower() in pergunta.resposta.lower():
             serializer_indicador = Indicador.objects.get(id = indicador['id'])
             conversa.id_indicador = serializer_indicador 
             finalizar_conversa(conversa)
             return
-        else:
-            conversa.id_indicador = None 
-            finalizar_conversa(conversa)
+    else:
+        conversa.id_indicador = None 
+        finalizar_conversa(conversa)
+        return
 
 
 def finalizar_conversa(conversa):
-    serializer = ConversaSerializer(conversa, data={
+    if (conversa.id_indicador == None):
+        serializer = ConversaSerializer(conversa, data={
+                'status': conversa.status,
+        }, partial=True) 
+    else:
+        serializer = ConversaSerializer(conversa, data={
                 'status': conversa.status,
                 'id_indicador': conversa.id_indicador.id,  
             }, partial=True) 
