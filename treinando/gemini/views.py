@@ -78,8 +78,8 @@ def create(request):
             'role': role,
             'parts': parts
         })
-    
-    ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();    
+
+    ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
     mensagem_count = Mensagem.objects.filter(id_conversa_id=ultima_mensagem.id_conversa, quem_enviou='aluno').count()
     controle_bot = get_controle_bot(id_aluno)
 
@@ -92,7 +92,7 @@ def create(request):
         pergunta = serializer.instance
 
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-pro') 
+        model = genai.GenerativeModel('gemini-pro')
         chat = model.start_chat(history=formatted_messages)
 
         scripts = Script.objects.all()
@@ -220,16 +220,18 @@ class UsuarioViewSet(viewsets.ViewSet):
     def login(self, request):
         email = request.data.get("email")
         senha = request.data.get("senha")
-        coordenadorEncontrado = Coordenador.objects.filter(email=email, senha=senha).first()
-        alunoEncontrado = Aluno.objects.filter(email=email, senha=senha).first()
-        if coordenadorEncontrado:
-            serializer = CoordenadorSerializer(coordenadorEncontrado)
+        coordenador = Coordenador.objects.filter(email=email).first()
+        if coordenador and coordenador.check_senha(senha):
+            serializer = CoordenadorSerializer(coordenador)
             return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
-        elif alunoEncontrado:
-            serializer = AlunoSerializer(alunoEncontrado)
+
+        # Verifica Aluno
+        aluno = Aluno.objects.filter(email=email).first()
+        if aluno and aluno.check_senha(senha):
+            serializer = AlunoSerializer(aluno)
             return Response({'resultado': True, 'dadosDoUsuario': serializer.data}, status=status.HTTP_200_OK)
-        else:
-            return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({'resultado': False}, status=status.HTTP_404_NOT_FOUND)
 
 
 #-------------------------------------------------SCRIPTS------------------------------------------------#
@@ -491,6 +493,7 @@ def salvar_mensagem_coordenador(request):
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
 #------------------------------------------------Salvar mensagem------------------------------------------------#
+
 def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora):
     ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
     
@@ -501,7 +504,7 @@ def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_
         'id_aluno': id_aluno,
         'id_coordenador': id_coordenador
     }
-        
+
     if ultima_mensagem:
         now = django_timezone.now()
         hora_ultima_mensagem = ultima_mensagem.data_hora
@@ -517,9 +520,9 @@ def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_
                 user = id_aluno
             else:
                 user = id_coordenador
-            
+
             formatted_messages = get_historico_conversa(ultima_mensagem)
-                
+            
             data['id_conversa'] = ultima_mensagem.id_conversa.id
             classificar_conversa(formatted_messages, user, ultima_mensagem.id_conversa)
             data['id_conversa'] = adicionar_conversa()
@@ -556,7 +559,7 @@ def salvar_nova_mensagem(data):
     if serializer.is_valid():
         serializer.save()
         return serializer
-    
+
 def verificar_status_conversa(id_conversa):
     conversa = Conversa.objects.get(id=id_conversa)
     return conversa.status
@@ -578,7 +581,7 @@ def get_historico_conversa(ultima_mensagem):
             'role': role,
             'parts': parts
         })
-        
+
     return formatted_messages
 
 def adicionar_conversa():
@@ -590,6 +593,7 @@ def adicionar_conversa():
         conversa = serializer.save();
         return conversa.id
     return None
+
 
 
 def verificar_encaminhamento_agendamento(id_aluno, ultima_mensagem):
@@ -733,7 +737,6 @@ def realiza_acao_encaminhamento(conversa_formatada, model, id_aluno, historico_c
         classificacao = "Não foi encontrado um setor correspondente ao assunto dessa conversa, dessa forma, a solicitação foi encaminhada para agendamento com o coordenador."
         enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao)
         return "Foi determinado que o assunto tem relação com as atribuições do coordenador"
-
 
 #------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
 
@@ -881,7 +884,7 @@ def finalizar_conversa(conversa):
                 'status': conversa.status,
                 'id_indicador': conversa.id_indicador.id,  
             }, partial=True) 
-
+    
     if serializer.is_valid():
         serializer.save()
     else:
