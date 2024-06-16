@@ -26,19 +26,19 @@ class ScriptsSerializer(serializers.ModelSerializer):
 class PessoaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pessoa
-        fields = ['id', 'nome', 'email']
+        fields = '__all__'
 
 class SetorSerializer(serializers.ModelSerializer):
     pessoas = serializers.PrimaryKeyRelatedField(queryset = Pessoa.objects.all(), many=True)
     class Meta:
         model = Setor
-        fields = ['id', 'nome', 'pessoas']
+        fields = '__all__'
         depth = 1 
 
 class IndicadorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Indicador
-        fields = ['id', 'nome', 'descricao']
+        fields = '__all__'
 
 class RelatorioSerializer(serializers.ModelSerializer):
     class Meta:

@@ -364,7 +364,8 @@ def excluir_pessoa(request, id):
 @api_view(['GET'])
 def listar_indicadores(request):
     if request.method == 'GET':
-        indicadores = Indicador.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        indicadores = Indicador.objects.filter(id_coordenador=id_coordenador, status=True)  # Get all objects in User's database (It returns a queryset)
 
         serializer = IndicadorSerializer(indicadores,
                                          many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
@@ -409,15 +410,17 @@ def editar_indicador(request, id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['DELETE'])
+@api_view(['PUT'])
 def excluir_indicador(request, id):
     try:
         id = Indicador.objects.get(id=id)
     except Indicador.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'DELETE':
-        id.delete();
+    if request.method == 'PUT':
+        serializer = IndicadorSerializer(id, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
