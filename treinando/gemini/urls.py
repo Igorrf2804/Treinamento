@@ -38,7 +38,7 @@ urlpatterns = [
 
     path('perguntas', views.create, name='perguntas'),
 
-    path('salvar-mensagem', views.salvar_mensagem, name='salvar_mensagem'),
+    path('salvar-mensagem', views.salvar_mensagem_coordenador, name='salvar_mensagem_coordenador'),
     path('listar-mensagens-por-aluno', views.listar_mensagens_por_aluno, name='listar_mensagens_por_aluno'),
     path('listar-todos-alunos', views.listar_todos_alunos, name='listar_todos_alunos'),
     path("chat", views.index, name="index"),
