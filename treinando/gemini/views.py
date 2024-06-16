@@ -240,7 +240,8 @@ class UsuarioViewSet(viewsets.ViewSet):
 @api_view(['GET'])
 def listar_scripts(request):
     if request.method == 'GET':
-        scripts = Script.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        scripts = Script.objects.filter(id_coordenador=id_coordenador)  # Get all objects in User's database (It returns a queryset)
 
         serializer = ScriptsSerializer(scripts,
                                        many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
@@ -293,7 +294,8 @@ def excluir_script(request, id):
 @api_view(['GET'])
 def listar_pessoas(request):
     if request.method == 'GET':
-        pessoas = Pessoa.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        pessoas = Pessoa.objects.filter(id_coordenador=id_coordenador)  # Get all objects in User's database (It returns a queryset)
 
         serializer = PessoaSerializer(pessoas,
                                       many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
@@ -326,8 +328,9 @@ def listar_pessoas_por_ids(request):
 @api_view(['GET'])
 def listar_pessoas_por_nome(request):
     if request.method == 'GET':
-        nome_filtro = request.GET.get('nome', '')  # Obtém o parâmetro 'nome' da query string
-        pessoas = Pessoa.objects.filter(nome__icontains=nome_filtro)  # Filtra as pessoas com base no nome fornecido
+        id_coordenador = request.GET.get('id_coordenador')
+        nome_filtro = request.GET.get('nome', '')  
+        pessoas = Pessoa.objects.filter(nome__icontains=nome_filtro, id_coordenador=id_coordenador)  # Filtra as pessoas com base no nome fornecido
         serializer = PessoaSerializer(pessoas, many=True)
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -390,8 +393,9 @@ def cadastrar_indicador(request):
 @api_view(['GET'])
 def listar_indicadores_por_nome(request):
     if request.method == 'GET':
+        id_coordenador = request.GET.get('id_coordenador')
         nome_filtro = request.GET.get('nome', '')
-        indicadores = Indicador.objects.filter(nome__icontains=nome_filtro)
+        indicadores = Indicador.objects.filter(nome__icontains=nome_filtro, id_coordenador=id_coordenador, status=True)
         serializer = IndicadorSerializer(indicadores, many=True)
         return Response(serializer.data)
     return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -432,7 +436,8 @@ def excluir_indicador(request, id):
 @api_view(['GET'])
 def visualizar_setores(request):
     if request.method == 'GET':
-        setores = Setor.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        setores = Setor.objects.filter(id_coordenador=id_coordenador)  # Get all objects in User's database (It returns a queryset)
 
         serializer = SetorSerializer(setores,
                                      many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)

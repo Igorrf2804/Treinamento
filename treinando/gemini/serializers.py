@@ -57,7 +57,6 @@ class SetorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Setor
         fields = '__all__'
-        depth = 1 
 
 class IndicadorSerializer(serializers.ModelSerializer):
     class Meta:

@@ -88,6 +88,7 @@ class Setor(models.Model):
     id = models.AutoField(primary_key = True)
     nome = models.CharField(max_length = 150)
     pessoas = models.ManyToManyField(Pessoa, related_name = "pessoas")
+    id_coordenador = models.ForeignKey(Coordenador, on_delete=models.DO_NOTHING, null = True)
 
 class Indicador(models.Model):
     id = models.AutoField(primary_key = True)
