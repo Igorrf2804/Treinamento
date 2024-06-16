@@ -58,6 +58,12 @@ def create(request):
     pergunta_txt = request.data.get('pergunta')
     historico = request.data.get('historico')
     id_aluno = request.data.get('id_aluno')
+    id_coordenador = request.data.get('id_coordenador')
+    data_hora = request.data.get('data_hora')
+    ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
+    historico_conversa = get_historico_conversa(ultima_mensagem)
+    salvar_mensagem(id_aluno, id_coordenador, pergunta_txt, "aluno", data_hora)
+
 
     formatted_messages = []
 
@@ -78,8 +84,11 @@ def create(request):
     mensagem_count = Mensagem.objects.filter(id_conversa_id=ultima_mensagem.id_conversa, quem_enviou='aluno').count()
     controle_bot = get_controle_bot(id_aluno)
 
-    if(controle_bot.bot_pode_responder and mensagem_count >= 6):
-        return Response({'mensagem': 'A conversa foi finalizada'}, status=status.HTTP_201_CREATED)
+    if(controle_bot.bot_pode_responder and mensagem_count >= 2):
+        tipo = verificar_encaminhamento_agendamento(id_aluno, ultima_mensagem)
+        salvar_mensagem(id_aluno, id_coordenador, "A conversa foi finalizada", "bot", data_hora)
+        classificar_conversa(historico_conversa, user, ultima_mensagem.id_conversa)
+        return Response({'mensagem': 'A conversa foi finalizada', 'tipo': tipo}, status=status.HTTP_201_CREATED)
     else:
         pergunta = serializer.instance
 
@@ -100,14 +109,13 @@ def create(request):
         instrucao = 'Você deve responder a mensagem: "' + pergunta_txt + '" com base nas seguintes instruções: ' + ', '.join(descricoes) + '. Caso a mensagem não corresponda a nenhuma instrução você deve responder: "Desculpe não consigo responder essa pergunta."'
         print(instrucao)
         resposta = chat.send_message(instrucao)
+        
+        salvar_mensagem(id_aluno, id_coordenador, resposta.text, "bot", data_hora)
 
-        if resposta.candidates[0].content.parts[
-            0].text != "" and "desculpe, sou um bot usado apenas para a resolução de problemas acadêmicos" not in \
-                resposta.candidates[0].content.parts[0].text:
-            pergunta.resposta = resposta.candidates[0].content.parts[0].text
-            return Response({'mensagem': resposta.candidates[0].content.parts[0].text}, status=status.HTTP_201_CREATED)
-
-        return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
+        if resposta.text:
+            return Response({'mensagem': resposta.text}, status=status.HTTP_201_CREATED)
+        else:    
+            return Response({'mensagem': 'Erro ao fazer a pergunta'}, status=status.HTTP_201_CREATED)
 
 
 #---------------------------------------------REDEFINIR SENHA--------------------------------------------#
@@ -359,7 +367,8 @@ def excluir_pessoa(request, id):
 @api_view(['GET'])
 def listar_indicadores(request):
     if request.method == 'GET':
-        indicadores = Indicador.objects.all()  # Get all objects in User's database (It returns a queryset)
+        id_coordenador = request.GET.get('id_coordenador')
+        indicadores = Indicador.objects.filter(id_coordenador=id_coordenador, status=True)  # Get all objects in User's database (It returns a queryset)
 
         serializer = IndicadorSerializer(indicadores,
                                          many=True)  # Serialize the object data into json (Has a 'many' parameter cause it's a queryset)
@@ -404,15 +413,17 @@ def editar_indicador(request, id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['DELETE'])
+@api_view(['PUT'])
 def excluir_indicador(request, id):
     try:
         id = Indicador.objects.get(id=id)
     except Indicador.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'DELETE':
-        id.delete();
+    if request.method == 'PUT':
+        serializer = IndicadorSerializer(id, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -469,13 +480,31 @@ def excluir_setores(request, id):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-#------------------------------------------------Salvar mensagem------------------------------------------------#
+#------------------------------------------------Salvar mensagem coordenador------------------------------------------------#
 @api_view(['POST'])
-def salvar_mensagem(request):
+def salvar_mensagem_coordenador(request):
     if request.method == 'POST':
+        texto_mensagem = request.data.get('texto_mensagem')
+        data_hora = request.data.get('data_hora')
+        quem_enviou = request.data.get('quem_enviou')
         id_aluno = request.data.get('id_aluno')
         id_coordenador = request.data.get('id_coordenador')
-        ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
+        salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora)
+        return Response(status=status.HTTP_201_CREATED)
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+#------------------------------------------------Salvar mensagem------------------------------------------------#
+
+def salvar_mensagem(id_aluno, id_coordenador, texto_mensagem, quem_enviou, data_hora):
+    ultima_mensagem = Mensagem.objects.filter(id_aluno=id_aluno).order_by('id').reverse().first();
+    
+    data = {
+        'texto_mensagem': texto_mensagem,
+        'data_hora': data_hora,
+        'quem_enviou':  quem_enviou,
+        'id_aluno': id_aluno,
+        'id_coordenador': id_coordenador
+    }
 
     if ultima_mensagem:
         now = django_timezone.now()
@@ -494,48 +523,40 @@ def salvar_mensagem(request):
                 user = id_coordenador
 
             formatted_messages = get_historico_conversa(ultima_mensagem)
-
-            request.data['id_conversa'] = ultima_mensagem.id_conversa.id
+            
+            data['id_conversa'] = ultima_mensagem.id_conversa.id
             classificar_conversa(formatted_messages, user, ultima_mensagem.id_conversa)
-            request.data['id_conversa'] = adicionar_conversa()
-            serializer = salvar_nova_mensagem(request)
-            if ultima_mensagem.quem_enviou == 'aluno':
-                verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)
+            data['id_conversa'] = adicionar_conversa()
+            serializer = salvar_nova_mensagem(data) 
             return Response(status=status.HTTP_201_CREATED)
         elif (ultima_mensagem.id_conversa == None):
             #se não tem uma conversa associada na última mensagem
-            request.data['id_conversa'] = adicionar_conversa()
-            serializer = salvar_nova_mensagem(request)
-            if ultima_mensagem.quem_enviou == 'aluno':
-                verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)
-            if(serializer):
+            data['id_conversa'] = adicionar_conversa()
+            serializer = salvar_nova_mensagem(data)  
+            if(serializer):      
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         else:
             #se não passou mais de três horas desde a última mensagem do aluno
             status_conversa = verificar_status_conversa(ultima_mensagem.id_conversa.id)
             if(status_conversa == True):
-                #se a conversa ainda está ativa deve salvar a mensagem com o mesmo id da conversa
-                request.data['id_conversa'] = ultima_mensagem.id_conversa.id
-                serializer = salvar_nova_mensagem(request)
-                if ultima_mensagem.quem_enviou == 'aluno':
-                    verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)
+                #se a conversa ainda está ativa deve salvar a mensagem com o mesmo id da conversa 
+                data['id_conversa'] = ultima_mensagem.id_conversa.id
+                serializer = salvar_nova_mensagem(data)
                 return Response(status=status.HTTP_201_CREATED)
             else:
                 #se a conversa não está ativa deve iniciar uma nova e a mensagem é salva com esse id da conversa nova
-                request.data['id_conversa'] = adicionar_conversa()
-                serializer = salvar_nova_mensagem(request)
-                if ultima_mensagem.quem_enviou == 'aluno':
-                    verificar_encaminhamento_agendamento(request.data['id_conversa'], id_aluno, ultima_mensagem)
+                data['id_conversa'] = adicionar_conversa()
+                serializer = salvar_nova_mensagem(data) 
                 return Response(status=status.HTTP_201_CREATED)
     else:
         #se não tem uma última mensagem (se o aluno não enviou nenhuma mensagem ainda)
-        request.data['id_conversa'] = adicionar_conversa()
-        serializer = salvar_nova_mensagem(request)
+        data['id_conversa'] = adicionar_conversa()
+        serializer = salvar_nova_mensagem(data) 
         return Response(status=status.HTTP_201_CREATED)
 
-def salvar_nova_mensagem(request):
-    serializer = MensagemSerializer(data=request.data)
+def salvar_nova_mensagem(data):
+    serializer = MensagemSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
         return serializer
@@ -574,106 +595,149 @@ def adicionar_conversa():
         return conversa.id
     return None
 
-def verificar_encaminhamento_agendamento(id_conversa, id_aluno, ultima_mensagem):
-    mensagem_count = Mensagem.objects.filter(id_conversa_id=id_conversa, quem_enviou='aluno').count()
-    controle_bot = get_controle_bot(id_aluno)
 
-    if(controle_bot.bot_pode_responder and mensagem_count >= 6):
-        historico_conversa = get_historico_conversa(ultima_mensagem)
 
-        genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-pro')
-        chat = model.start_chat(history=historico_conversa)
-        classificacao = chat.send_message("Com base na nossa conversa você deve realizar um encaminhamento " +
-                                     "ou agendamento. Utilize as informações abaixo para fazer a classificação de encaminhar " +
-                                     "ou agendar: Agendamento: Você deve avaliar as mensagens enviadas e verificar se elas tem " +
-                                     "relação com: planejamento e problemas acadêmicos: Escolha de disciplinas e planejamento de cursos; " +
-                                     "Dúvidas sobre requisitos de graduação e pré-requisitos de disciplinas; Orientação sobre mudanças de " +
-                                     "curso ou transferência entre programas, orientação profissional: Informações sobre estágios, oportunidades "+
-                                     "de emprego e carreiras relacionadas ao curso; Networking e eventos de carreira; problemas " +
-                                     "com professores ou colegas: Conflitos ou problemas de comunicação com professores; Questões sobre a metodologia " +
-                                     "de ensino ou avaliação; e casos especiais: Trancamento do curso. O agendamento é quando o coordenador " +
-                                     "recebe uma demanda. Você não deve classificar como agendamento caso as mensagens não " +
-                                     "tiverem relação com os itens citados. Já o encaminhamento é quando o assunto não tem " +
-                                     "relação com o coordenador de curso, os assuntos que recebem a classificação encaminhamento são: " +
-                                     "questões administrativas, biblioteca, infraestrutura e assuntos acadêmicos gerais. O encaminhamento " +
-                                     "é quando a assunto é relacionado a outros setores da instituição de ensino superior que não seja " +
-                                     "a coordenação de curso. Você não deve classificar como encaminhamento caso as mensagens não " +
-                                     "tiverem relação com os itens citados. Você precisa retornar apenas uma palavra: encaminhamento ou agendamento")
-        print(classificacao.text)
+def verificar_encaminhamento_agendamento(id_aluno, ultima_mensagem):
+   
+    historico_conversa = get_historico_conversa(ultima_mensagem)
+    
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-pro')
+    chat = model.start_chat(history=historico_conversa)
+    classificacao = chat.send_message(f"Com base nessa conversa {historico_conversa} você deve realizar um encaminhamento " + 
+                                    "ou agendamento. Utilize as informações abaixo para fazer a classificação de encaminhar " +
+                                    "ou agendar: Agendamento: Você deve avaliar as mensagens enviadas e verificar se elas tem " +
+                                    "relação com: Escolha de disciplinas e planejamento de cursos; " +
+                                    "Dúvidas sobre requisitos de graduação e pré-requisitos de disciplinas; Orientação sobre mudanças de " +
+                                    "curso ou transferência entre programas; orientação profissional; Informações sobre estágios, oportunidades "+ 
+                                    "de emprego e carreiras relacionadas ao curso; Networking e eventos de carreira; problemas " +
+                                    "com professores ou colegas; Conflitos ou problemas de comunicação com professores; Questões sobre a metodologia " +
+                                    "de ensino ou avaliação; Trancamento do curso; Divulgação de informações importantes relacionadas ao curso. " +
+                                    "Representação do curso em reuniões institucionais; Monitoramento do desempenho acadêmico dos alunos,  " +
+                                    "identificando aqueles que precisam de apoio adicional; Aconselhamento sobre a escolha de disciplinas  " +
+                                    "e trajetórias acadêmicas; Orientação e suporte na elaboração de projetos de pesquisa e trabalhos de conclusão de curso (TCC)." +
+                                    "Coleta de feedback dos alunos sobre disciplinas e professores; Implementação de melhorias baseadas nas avaliações dos alunos. " +
+                                    "Promoção de canais abertos para sugestões e críticas dos alunos; Coordenação de semanas acadêmicas e outros eventos que envolvam a participação ativa dos alunos." +
+                                    ". O agendamento é quando o coordenador recebe uma demanda. Já o encaminhamento é quando o assunto não tem " +
+                                    "relação com o coordenador de curso, os assuntos que recebem a classificação encaminhamento são: " +
+                                    "questões administrativas, biblioteca, infraestrutura e assuntos acadêmicos gerais, alguns exemplos são: " +
+                                    "validação de horas complementares, histórico acadêmico, atestado de matrícula, rematrícula e matrícula de novos alunos, emitir diplomas,emitir declarações " +
+                                    "atualizar dados dos alunos, fornecer informações sobre cursos e disciplinas, Organizar e divulgar calendários acadêmicos, " +
+                                    "Gerenciar reservas de salas e equipamentos, Informar sobre programas de bolsas de estudo e financiamentos,  " +
+                                    "Organizar e apoiar eventos como seminários, palestras, congressos e formaturas, Oferecer suporte técnico a alunos e professores" +
+                                    "Aquisição de livros, periódicos, e-books e outros materiais de interesse para o curso. " +
+                                    "Empréstimo, renovação e reserva de materiais bibliográficos, Serviço de referência para ajudar alunos e professores na pesquisa de informações. " +
+                                    "Assistência na elaboração de projetos de pesquisa e na busca de fontes de informação." +
+                                    "Treinamentos em técnicas de busca e uso de bibliografias e citações. " +
+                                    ". O encaminhamento é quando a assunto é relacionado a outros setores da instituição de ensino superior que não seja " +
+                                    "a coordenação de curso. Você não deve classificar como encaminhamento caso as mensagens não " +
+                                    "tiverem relação com os itens citados. Você precisa retornar apenas uma palavra: encaminhamento ou agendamento e justifique sua escolha")
+    print(classificacao.text)
 
-        role_map = {
-            'user': 'aluno',
-            'model': 'chatbot'
-        }
+ 
 
         # Função para formatar a lista em uma string
-        def format_dialogue(dialogue):
-            formatted_str = ""
-            for entry in dialogue:
-                role = role_map.get(entry['role'], entry['role'])
-                parts = entry['parts']
-                formatted_str += f"{role}: {parts}\n"
-            return formatted_str
-        conversa_formatada = format_dialogue(historico_conversa)
+        
+    conversa_formatada = format_dialogue(historico_conversa)
 
-        if (classificacao.text.lower() == 'encaminhamento'):
-            setores = Setor.objects.all()
-            serializer_setores = []
-            for setor in setores:
-                serializer = SetorSerializer(setor)
-                serializer_setores.append(serializer.data)
-
-
-            # instrucao = "Com base no histórico, você deve classificar o setor que o assunto da conversa mais se encaixa. O setores podem ser: " + " , ".join([item['nome'] for item in serializer_setores])
-
-
-
-            instrucao = "Com base na seguinte conversa: \n " + conversa_formatada + "\n você deve classificar o setor que o assunto da conversa mais se encaixa. O setores podem ser: financeiro: relacionados a segunda via de boletos; secretaria: relacionados a atestado de matrícula, histórico acadêmico e validação de horas complementares; biblioteca: relacionado ao aluguel de livros acadêmicos. Você deve retornar apenas o nome do setor em letras minúsculas. Você não deve retornar um setor que não seja um desses enviados."
-            setor = model.generate_content(instrucao)
-
-            for setor_serializer in serializer_setores:
-                if setor_serializer['nome'].strip().lower() == setor.text.strip().lower():
-                    pessoas_ids = setor_serializer['pessoas']
-                    pessoas_setor = Pessoa.objects.filter(id__in=pessoas_ids)
-                    for pessoa in pessoas_setor:
-
-                        try:
-                            aluno = Aluno.objects.get(id=id_aluno)
-                        except ObjectDoesNotExist:
-                            print(f'Aluno com id {id_aluno} não encontrado.')
-                            return
-
-
-                        assunto = 'Encaminhamento realizado'
-                        msg = f'Um encaminhamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \n{conversa_formatada}'
-                        remetente = "ads.senac.tcs@gmail.com"
-                        recipient_list = [pessoa.email, 'ads.senac.tcs@gmail.com', aluno.email]
-
-                        # Envia o email
-                        send_mail(assunto, msg, remetente, recipient_list)
-                        classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
-                        return Response({'mensagem': "Foi realizado um encaminhamento para o setor responsável, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
-
-                    return
+    if ('encaminhamento' in classificacao.text.lower()):
+        setor = realiza_acao_encaminhamento(conversa_formatada, model, id_aluno, historico_conversa, ultima_mensagem, classificacao)
+        if(setor == "Foi determinado que o assunto tem relação com as atribuições do coordenador"):
+            return {'tipo': "agendamento", 'setor': None}
         else:
-            if id_aluno is None:
-                return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+            return {'tipo': "encaminhamento", 'setor': setor.text}
+    else:
+        enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao.text)
+        return "agendamento"
+            
+    
+def enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao):
+    if id_aluno is None:
+        return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    aluno = Aluno.objects.get(id=id_aluno)
+    coordenador = Coordenador.objects.filter(instituicao=aluno.instituicao_id, curso=aluno.curso_id).first()
+            
+    if coordenador:
+        assunto = 'Agendamento realizado'
+        msg = f'Um agendamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \nChat:\n{conversa_formatada} \n\n Justificativa do agendamento: {classificacao}'
+        remetente = "ads.senac.tcs@gmail.com"
+        send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])        
+        return Response({'mensagem': "Foi realizado um agendamento para o coordenador do seu curso, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
 
-            aluno = Aluno.objects.get(id=id_aluno)
-            coordenador = Coordenador.objects.filter(instituicao=aluno.instituicao_id, curso=aluno.curso_id).first()
 
-            if coordenador:
-                assunto = 'Agendamento realizado'
-                msg = f'Um agendamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \n{conversa_formatada}'
-                remetente = "ads.senac.tcs@gmail.com"
-                send_mail(assunto, msg, remetente, recipient_list=[coordenador.email,'ads.senac.tcs@gmail.com', aluno.email])
-                classificar_conversa(historico_conversa, id_aluno, ultima_mensagem.id_conversa)
-                return Response({'mensagem': "Foi realizado um agendamento para o coordenador do seu curso, você pode realizar o acompanhamento através do email."}, status=status.HTTP_201_CREATED)
+def format_dialogue(dialogue):
+    role_map = {
+        'user': 'aluno',
+        'model': 'chatbot'
+    }
+       
+    formatted_str = ""
+    for entry in dialogue:
+        role = role_map.get(entry['role'], entry['role'])
+        parts = entry['parts']
+        formatted_str += f"{role}: {parts}\n"
+    return formatted_str
 
-
-
-
+def realiza_acao_encaminhamento(conversa_formatada, model, id_aluno, historico_conversa, ultima_mensagem, classificacao):
+    setores = Setor.objects.all()
+    serializer_setores = []
+    for setor in setores:
+        serializer = SetorSerializer(setor)
+        serializer_setores.append(serializer.data)
+    
+    instrucao = (f"Com base na seguinte conversa: \n " + conversa_formatada + "\n " +
+        "você deve classificar o setor que o assunto da conversa mais se encaixa. " +
+        "O setores podem ser: \nfinanceiro: esse setor trata de assuntos relacionados a segunda via de boletos. "+
+        "Emissão de boletos e cobranças mensais. Acompanhamento de pagamentos e inadimplência. Negociação de prazos e condições de pagamento. "+
+        "Geração de comprovantes de pagamento. Fornecimento de relatórios financeiros para alunos e responsáveis. "+
+        "Estratégias de cobrança e renegociação de dívidas; Implementação de planos de pagamento personalizados para alunos em atraso. "+
+        "Manutenção de registros detalhados de todos os pagamentos efetuados pelos alunos. "+
+        "Controle financeiro durante processos de matrícula e rematrícula. "+
+        "Verificação de pendências financeiras antes da confirmação de matrícula. "+
+        "\nsecretaria: esse setor trata de assuntos relacionados a atestado de matrícula, histórico acadêmico, validação de horas complementares; " +
+        "Processamento de inscrições e renovações de matrícula; Manutenção de registros de alunos matriculados. " +
+        "Fornecimento de históricos escolares, certificados de conclusão, atestados de matrícula e frequência. " +
+        "Emissão de boletins e relatórios de desempenho acadêmico. " +
+        "Orientação e suporte a alunos, pais e responsáveis. " +
+        "Resposta a dúvidas e fornecimento de informações sobre processos acadêmicos e administrativos. " +
+        "Organização e manutenção de arquivos físicos e digitais de alunos, professores e funcionários. " +
+        "Atualização de dados cadastrais. " +
+        "Envio de comunicados e avisos aos alunos, pais e equipe. " +
+        "Gestão de canais de comunicação, como e-mails, boletins informativos e murais. " +
+        "Planejamento e coordenação de eventos escolares, como formaturas, palestras, feiras e reuniões de pais. " +
+        "Logística e suporte para a realização de atividades extracurriculares. " +
+        "Registro e monitoramento da presença de alunos e professores. " +
+        "Emissão de relatórios de frequência. " +
+        "\nbiblioteca: esse setor trata de assuntos relacionados a Empréstimo, renovação e reserva de materiais bibliográficos, Serviço de referência para ajudar alunos e professores na pesquisa de informações. " +
+        "Assistência na elaboração de projetos de pesquisa e na busca de fontes de informação." +
+        "Treinamentos em técnicas de busca e uso de bibliografias e citações. " +
+        "Você deve retornar apenas o nome do setor em letras minúsculas. " +
+        "Você não deve retornar um setor que não seja um desses enviados." )
+    print(instrucao)
+    setor = model.generate_content(instrucao)
+    
+    for setor_serializer in serializer_setores:
+        if setor.text.strip().lower() == setor_serializer['nome']:
+            pessoas_ids = setor_serializer['pessoas']
+            pessoas_setor = Pessoa.objects.filter(id__in=pessoas_ids)
+            try:
+                aluno = Aluno.objects.get(id=id_aluno)
+            except ObjectDoesNotExist:
+                print(f'Aluno com id {id_aluno} não encontrado.')
+                return
+            
+            assunto = 'Encaminhamento realizado'
+            msg = f'Um encaminhamento foi realizado para o atendimento do aluno abaixo: \n\nAluno:{aluno.nome} \nEmail: {aluno.email} \n\nPor favor, entre em contato assim que possível.\n \nChat:\n{conversa_formatada}\n\n Justificativa do encaminhamento: {classificacao.text}'
+            remetente = "ads.senac.tcs@gmail.com"
+            for pessoa in pessoas_setor:
+                recipient_list = [pessoa.email, 'ads.senac.tcs@gmail.com', aluno.email]
+                send_mail(assunto, msg, remetente, recipient_list)   
+            return setor    
+    else:
+        classificacao = "Não foi encontrado um setor correspondente ao assunto dessa conversa, dessa forma, a solicitação foi encaminhada para agendamento com o coordenador."
+        enviar_email_coordenador(id_aluno, historico_conversa, ultima_mensagem, conversa_formatada, classificacao)
+        return "Foi determinado que o assunto tem relação com as atribuições do coordenador"
 
 #------------------------------------------------Listar mensagens pelo id do aluno ordenado pela data------------------------------------------------#
 
@@ -715,6 +779,118 @@ def listar_todos_alunos(request):
 
 # fazer depois com que essa rota retorne o número de conversas
 # e número de conversas sobre determinado assunto
+
+
+
+#------------------------------------------------Mudar status bot------------------------------------------------#
+@api_view(['POST'])
+def mudar_status_bot(request):
+    if request.method == 'POST':
+        status_bot = request.data.get('status')
+        id_aluno = request.data.get('id_aluno')
+
+        controle_bot = ControleBot.objects.filter(id_aluno=id_aluno).first()
+        if controle_bot:
+            dados = {'bot_pode_responder': status_bot, 'id_aluno': controle_bot.id_aluno.id}
+            serializer = ControleBotSerializer(controle_bot, data=dados)
+        else:
+            dados = {'bot_pode_responder': status_bot, 'id_aluno': id_aluno}
+            serializer = ControleBotSerializer(data=dados)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def verificar_status_bot(request):
+    if request.method == 'GET':
+        id_aluno = request.query_params.get('id_aluno')
+        controle_bot = get_controle_bot(id_aluno)
+        if controle_bot:
+            serializer = ControleBotSerializer(controle_bot)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "ControleBot não encontrado para o id_aluno fornecido"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+def get_controle_bot(id_aluno):
+    if id_aluno is None:
+        return Response({"error": "id_aluno não fornecido"}, status=status.HTTP_400_BAD_REQUEST)
+
+    controle_bot = ControleBot.objects.filter(id_aluno=id_aluno).first()
+    return controle_bot
+
+
+def classificar_conversa(historico, usuario, id_conversa):
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-pro')
+    chat = model.start_chat(history=historico)
+
+    indicadores = Indicador.objects.all()
+    serializer_indicadores = []
+    nome_descricao_indicadores = ""
+    for indicador in indicadores:
+        serializer = IndicadorSerializer(indicador)
+        serializer_indicadores.append(serializer.data)
+        indicador_descricao = (f"{indicador.nome}: {indicador.descricao}; ")
+        nome_descricao_indicadores += indicador_descricao
+
+
+    
+    msg = (f"Gemini, classifique a conversa: {historico} com um dos seguintes indicadores e retorne ele para mim. Não retorne nenhuma outra informação além do indicador e deve ser apenas 1 indicador, aquele que mais se encaixa. Os indicadores podem ser: {nome_descricao_indicadores}")
+    print(msg)
+    dados = {
+        "user": usuario,
+        "pergunta": msg
+    }
+    pergunta = Pergunta(
+        user = usuario,
+        pergunta = msg
+    )
+    pergunta.usuario = dados['user'],
+    resposta = chat.send_message(msg)
+    pergunta.resposta = resposta.candidates[0].content.parts[0].text
+
+    try:
+        conversa = Conversa.objects.get(id=id_conversa.id)
+    except Conversa.DoesNotExist:
+        conversa = None
+        print("Conversa com o id fornecido não existe.")
+
+    for indicador in serializer_indicadores:
+        conversa.status = False
+        if indicador['nome'].lower() in pergunta.resposta.lower():
+            serializer_indicador = Indicador.objects.get(id = indicador['id'])
+            conversa.id_indicador = serializer_indicador 
+            finalizar_conversa(conversa)
+            return
+    else:
+        conversa.id_indicador = None 
+        finalizar_conversa(conversa)
+        return
+
+
+def finalizar_conversa(conversa):
+    if (conversa.id_indicador == None):
+        serializer = ConversaSerializer(conversa, data={
+                'status': conversa.status,
+        }, partial=True) 
+    else:
+        serializer = ConversaSerializer(conversa, data={
+                'status': conversa.status,
+                'id_indicador': conversa.id_indicador.id,  
+            }, partial=True) 
+    
+    if serializer.is_valid():
+        serializer.save()
+    else:
+        print(serializer.errors) 
+
 
 
 
